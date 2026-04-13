@@ -1,0 +1,4155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>DisasterDoc — Emergency Response Assistant</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   VARIABLES & RESET
+═══════════════════════════════════════════════════════ */
+:root {
+  --bg:         #070709;
+  --bg-card:    #0f0f12;
+  --bg-raised:  #17171c;
+  --bg-hover:   #1f1f26;
+  --border:     #252530;
+  --border-hi:  #363648;
+  --text:       #f0f0f5;
+  --text-dim:   #8888aa;
+  --text-muted: #4a4a60;
+  --red:        #FF3B30;
+  --red-dim:    rgba(255,59,48,0.12);
+  --red-glow:   rgba(255,59,48,0.4);
+  --red-soft:   rgba(255,59,48,0.08);
+  --orange:     #FF9500;
+  --yellow:     #FFD60A;
+  --blue:       #3D9EFF;
+  --blue-dim:   rgba(61,158,255,0.12);
+  --green:      #34D168;
+  --purple:     #BF5AF2;
+  --triage-red:    #FF3B30;
+  --triage-yellow: #FFD60A;
+  --triage-green:  #34D168;
+  --triage-black:  #636375;
+  --font-size: 16px;
+  --response-size: 20px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --ease-out: cubic-bezier(0.32, 0, 0.15, 1);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.5);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.65);
+}
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+html { height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', Roboto, sans-serif;
+  font-size: var(--font-size);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  background-image: radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255,59,48,0.06) 0%, transparent 60%);
+  background-attachment: fixed;
+}
+button { cursor: pointer; font-family: inherit; }
+input, textarea, select { font-family: inherit; }
+button:focus-visible,
+.mode-btn:focus-visible,
+textarea:focus-visible,
+#send-btn:focus-visible,
+#mic-btn:focus-visible,
+.proto-btn:focus-visible,
+.detail-chip:focus-visible,
+#speak-btn:focus-visible,
+#settings-btn:focus-visible,
+.settings-close:focus-visible {
+  outline: 2px solid var(--blue);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  #mic-btn.recording { animation: none; }
+  #followup-fab { animation: none; }
+  .spin { animation: none; }
+  .cursor { animation: none; }
+  #mode-detect-toast, #toast { transition: none; }
+}
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #444460; }
+
+/* ═══════════════════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════════════════ */
+#header {
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #0c0c10 0%, var(--bg-card) 100%);
+  border-bottom: 1px solid var(--border);
+  padding: 11px 16px 10px;
+  padding-top: max(11px, env(safe-area-inset-top));
+  z-index: 50;
+  box-shadow: 0 1px 0 rgba(255,59,48,0.08), 0 4px 20px rgba(0,0,0,0.5);
+}
+#header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 11px;
+}
+#logo {
+  font-size: 21px;
+  font-weight: 900;
+  letter-spacing: -0.8px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+#logo-cross {
+  width: 30px; height: 30px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #FF3B30, #c0120a);
+  color: #fff;
+  font-size: 16px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(255,59,48,0.45);
+  flex-shrink: 0;
+}
+#logo-text { color: var(--text); letter-spacing: -0.5px; }
+#logo-text span {
+  background: linear-gradient(90deg, #FF3B30, #FF6B35);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+#logo-nia-badge {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  background: var(--blue-dim);
+  color: var(--blue);
+  border: 1px solid rgba(61,158,255,0.25);
+  padding: 2px 7px;
+  border-radius: 10px;
+  text-transform: uppercase;
+}
+#header-actions { display: flex; gap: 8px; align-items: center; }
+#settings-btn {
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hi);
+  color: var(--text-dim);
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  font-size: 15px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.18s;
+  box-shadow: var(--shadow-sm);
+}
+#settings-btn:hover {
+  color: var(--text);
+  border-color: #55556a;
+  background: var(--bg-hover);
+}
+#emergency-call-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: linear-gradient(180deg, #ff3b30, #b01008);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.35px;
+  padding: 0 12px;
+  min-height: 36px;
+  border-radius: 18px;
+  text-decoration: none;
+  white-space: nowrap;
+  box-shadow: 0 2px 12px rgba(255, 59, 48, 0.4);
+  transition: filter 0.15s, transform 0.15s;
+  font-family: inherit;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+#emergency-call-btn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+#emergency-call-btn:active {
+  transform: translateY(0);
+}
+
+/* Emergency panel (location + AI summary + hospitals) */
+#emergency-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  background: rgba(0, 0, 0, 0.78);
+  backdrop-filter: blur(5px);
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0;
+  box-sizing: border-box;
+}
+#emergency-overlay.open {
+  display: flex;
+}
+#emergency-panel {
+  width: min(520px, 100%);
+  max-height: min(92dvh, 900px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border-hi);
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -8px 40px rgba(0, 0, 0, 0.55);
+}
+.emergency-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, #1a1a22, var(--bg-raised));
+  flex-shrink: 0;
+}
+.emergency-panel-title {
+  font-size: 17px;
+  font-weight: 900;
+  color: var(--text);
+  margin: 0;
+  line-height: 1.25;
+}
+.emergency-panel-sub {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 6px 0 0;
+  line-height: 1.45;
+}
+#emergency-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border-hi);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+#emergency-close:hover { color: var(--text); border-color: var(--border); }
+.emergency-panel-body {
+  padding: 14px 16px 18px;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+#emergency-status {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--blue);
+  margin-bottom: 10px;
+  min-height: 1.2em;
+}
+#emergency-status.error { color: var(--red); }
+#emergency-message-body {
+  width: 100%;
+  min-height: 140px;
+  max-height: 220px;
+  box-sizing: border-box;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+  font-family: inherit;
+  margin-bottom: 12px;
+}
+#emergency-message-body:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(61, 158, 255, 0.12);
+}
+.emergency-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+#emergency-location-line {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 14px;
+  line-height: 1.45;
+  word-break: break-all;
+}
+#emergency-location-line a { color: var(--blue); }
+.emergency-hospitals-title {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+#emergency-hospitals-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+.emergency-hospital-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+}
+.emergency-hospital-name { font-weight: 700; color: var(--text); flex: 1; min-width: 0; }
+.emergency-hospital-dist {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.emergency-hospital-row a {
+  font-size: 11px;
+  color: var(--blue);
+  text-decoration: none;
+  margin-top: 4px;
+  display: inline-block;
+}
+.emergency-hospital-row a:hover { text-decoration: underline; }
+.emergency-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+.emergency-actions a,
+.emergency-actions button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 16px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: filter 0.15s, transform 0.15s;
+}
+.emergency-actions .emergency-btn-call {
+  background: linear-gradient(180deg, #ff3b30, #b01008);
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 2px 12px rgba(255, 59, 48, 0.35);
+}
+.emergency-actions .emergency-btn-sms {
+  background: var(--bg-raised);
+  color: var(--text);
+  border: 1px solid var(--border-hi);
+}
+.emergency-actions .emergency-btn-copy {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border-hi);
+}
+.emergency-actions a:hover,
+.emergency-actions button:hover { filter: brightness(1.06); }
+.emergency-hint-foot {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 12px;
+  line-height: 1.45;
+}
+
+/* Mode Selector */
+.mode-bar-wrap {
+  position: relative;
+}
+.mode-bar-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+#mode-bar {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 4px 2px 10px;
+  margin: 0 -4px;
+  scroll-padding: 0 12px;
+  -webkit-overflow-scrolling: touch;
+  mask-image: linear-gradient(90deg, transparent 0%, #000 12px, #000 calc(100% - 12px), transparent 100%);
+}
+#mode-bar::-webkit-scrollbar { display: none; }
+.mode-btn {
+  flex-shrink: 0;
+  padding: 9px 16px;
+  min-height: 40px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--bg-raised);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: border-color 0.2s, background 0.2s, color 0.2s, box-shadow 0.2s, transform 0.15s var(--ease-out);
+  line-height: 1.2;
+  letter-spacing: 0.1px;
+}
+.mode-btn:hover { color: var(--text-dim); border-color: var(--border-hi); background: var(--bg-hover); }
+.mode-btn:active { transform: scale(0.97); }
+.mode-btn.active {
+  color: var(--mode-color, #fff);
+  border-color: var(--mode-color, #fff);
+  background: color-mix(in srgb, var(--mode-color, #fff) 10%, #17171c);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--mode-color,#fff) 25%, transparent),
+              inset 0 0 12px color-mix(in srgb, var(--mode-color,#fff) 5%, transparent);
+  font-weight: 700;
+}
+[data-mode="earthquake"] { --mode-color: #FF3B30; }
+[data-mode="hurricane"]  { --mode-color: #3D9EFF; }
+[data-mode="chemical"]   { --mode-color: #FFD60A; }
+[data-mode="mass"]       { --mode-color: #FF9500; }
+[data-mode="wildfire"]   { --mode-color: #FF6B35; }
+[data-mode="general"]    { --mode-color: #9090a8; }
+
+/* ═══════════════════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════════════════ */
+#layout {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+#sidebar {
+  width: 268px;
+  flex-shrink: 0;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border);
+  display: none;
+  flex-direction: column;
+}
+@media (min-width: 760px) { #sidebar { display: flex; } }
+#sidebar-split {
+  flex: 0 1 auto;
+  min-height: 0;
+  max-height: min(340px, 42vh);
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--border);
+  background: linear-gradient(180deg, rgba(61, 158, 255, 0.05), transparent);
+}
+#sidebar-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#sidebar-tabs button {
+  flex: 1;
+  padding: 10px 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: inherit;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  transition: color 0.15s, background 0.15s;
+}
+#sidebar-tabs button:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.03);
+}
+#sidebar-tabs button[aria-selected="true"] {
+  color: var(--blue);
+  border-bottom-color: var(--blue);
+  background: rgba(61, 158, 255, 0.08);
+}
+#sidebar-tab-panels {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.sidebar-tab-panel {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px 14px 12px;
+  display: none;
+  flex-direction: column;
+}
+.sidebar-tab-panel.active {
+  display: flex;
+}
+#sidebar-latest-text {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.45;
+  word-break: break-word;
+}
+#sidebar-hosp-status {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+  min-height: 1.2em;
+  line-height: 1.35;
+}
+#sidebar-hosp-status.loc-err { color: var(--red); }
+#sidebar-hosp-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.sidebar-hosp-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 9px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 11px;
+}
+.sidebar-hosp-name {
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.3;
+}
+.sidebar-hosp-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.sidebar-hosp-meta a {
+  color: var(--blue);
+  text-decoration: none;
+  font-weight: 600;
+}
+.sidebar-hosp-meta a:hover { text-decoration: underline; }
+#sidebar-hosp-refresh {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: 8px;
+  border: 1px solid var(--border-hi);
+  background: var(--bg-raised);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-family: inherit;
+}
+#sidebar-hosp-refresh:hover {
+  color: var(--text);
+  border-color: var(--border);
+}
+#sidebar-history-section {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+#sidebar.sidebar-hospitals-tab #sidebar-history-section {
+  display: none;
+}
+#sidebar.sidebar-hospitals-tab #sidebar-split {
+  flex: 1;
+  min-height: 180px;
+  max-height: none;
+}
+#sidebar-header {
+  padding: 11px 16px 9px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+#history-list {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+.hist-item {
+  padding: 13px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.15s ease;
+  position: relative;
+}
+.hist-item:hover { background: var(--bg-hover); }
+.hist-item:active { background: rgba(255,59,48,0.06); }
+.hist-item:hover::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 2px;
+  background: var(--red);
+  opacity: 0.7;
+}
+.hist-query {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+.hist-meta {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.hist-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.hist-empty {
+  padding: 24px 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+  line-height: 1.7;
+}
+
+/* Main */
+#main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+#scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 16px 20px;
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+/* Composer — groups voice + text input */
+.composer-card {
+  background: linear-gradient(165deg, rgba(255,255,255,0.03) 0%, transparent 42%), var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 18px 16px 16px;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.composer-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin: 0 2px;
+}
+.composer-label span {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-dim);
+  margin-top: 5px;
+  line-height: 1.45;
+}
+#composer-heading[hidden] {
+  display: none !important;
+}
+.composer-card.composer-no-instructions {
+  padding-top: 14px;
+  gap: 12px;
+}
+
+/* ═══════════════════════════════════════════════════════
+   MIC SECTION
+═══════════════════════════════════════════════════════ */
+#mic-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 4px 0 4px;
+}
+#mic-btn {
+  width: 88px; height: 88px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, var(--bg-raised), #0e0e14);
+  border: 2px solid var(--border-hi);
+  padding: 0;
+  font-size: 0;
+  line-height: 0;
+  color: #c8c8d8;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.25s cubic-bezier(0.34,1.56,0.64,1);
+  position: relative;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 6px rgba(255,59,48,0.04), var(--shadow-md);
+}
+#mic-btn .mic-icon {
+  width: 30px;
+  height: 30px;
+  display: block;
+  flex-shrink: 0;
+  overflow: visible;
+}
+#mic-btn::before {
+  content: '';
+  position: absolute;
+  inset: -7px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  opacity: 0.5;
+  pointer-events: none;
+}
+#mic-btn:hover:not(.recording) {
+  color: #e8e8f2;
+  border-color: #55556a;
+  background: linear-gradient(145deg, var(--bg-hover), #121218);
+  transform: scale(1.04);
+  box-shadow: 0 0 0 8px rgba(255,59,48,0.06), var(--shadow-md);
+}
+#mic-btn.recording {
+  color: #f5f5fa;
+  background: linear-gradient(145deg, rgba(255,59,48,0.18), rgba(180,20,10,0.12));
+  border-color: var(--red);
+  box-shadow: 0 0 0 0 var(--red-glow), var(--shadow-md);
+  animation: mic-pulse 1.6s ease-in-out infinite;
+}
+@keyframes mic-pulse {
+  0%   { box-shadow: 0 0 0 0   rgba(255,59,48,0.45), var(--shadow-md); transform: scale(1); }
+  40%  { box-shadow: 0 0 0 14px rgba(255,59,48,0.15), var(--shadow-md); transform: scale(1.05); }
+  70%  { box-shadow: 0 0 0 26px rgba(255,59,48,0.04), var(--shadow-md); }
+  100% { box-shadow: 0 0 0 32px rgba(255,59,48,0),    var(--shadow-md); transform: scale(1); }
+}
+#mic-status {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+  min-height: 18px;
+  text-align: center;
+  transition: color 0.2s;
+  letter-spacing: 0.2px;
+}
+#mic-status.recording { color: var(--red); font-weight: 700; letter-spacing: 0.5px; }
+#transcript-live {
+  font-size: 14px;
+  color: var(--text-dim);
+  font-style: italic;
+  text-align: center;
+  min-height: 20px;
+  max-width: 520px;
+  padding: 0 12px;
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════════════
+   INPUT ROW
+═══════════════════════════════════════════════════════ */
+#input-row {
+  position: relative;
+  display: block;
+}
+#query-input {
+  width: 100%;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius-lg);
+  padding: 14px 62px 14px 16px;
+  color: var(--text);
+  font-size: 16px;
+  line-height: 1.5;
+  resize: none;
+  min-height: 50px;
+  max-height: 120px;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  box-shadow: var(--shadow-sm);
+}
+#query-input::placeholder { color: var(--text-muted); }
+#query-input:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(61,158,255,0.12), var(--shadow-sm);
+}
+#send-btn {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  z-index: 2;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  background: linear-gradient(145deg, #ff5a52 0%, #FF3B30 40%, #b01008 100%);
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 50%;
+  font-size: 0;
+  line-height: 0;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.18s cubic-bezier(0.34,1.56,0.64,1), box-shadow 0.18s, opacity 0.15s;
+  flex-shrink: 0;
+  box-shadow:
+    0 6px 22px rgba(255,59,48,0.45),
+    0 2px 8px rgba(0,0,0,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.22);
+}
+#send-btn .send-icon {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+#send-btn:hover {
+  opacity: 1;
+  transform: translateY(-2px) scale(1.04);
+  box-shadow:
+    0 10px 28px rgba(255,59,48,0.5),
+    0 4px 12px rgba(0,0,0,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.28);
+}
+#send-btn:active { transform: translateY(0) scale(0.96); }
+#send-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* ═══════════════════════════════════════════════════════
+   STATUS BAR
+═══════════════════════════════════════════════════════ */
+#status-bar {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius-sm);
+  padding: 9px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-dim);
+  box-shadow: var(--shadow-sm);
+}
+#status-bar.show { display: flex; }
+.spin {
+  width: 15px; height: 15px;
+  border: 2px solid var(--border-hi);
+  border-top-color: var(--blue);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#status-msg { flex: 1; }
+#nia-offline-warn {
+  font-size: 11px;
+  color: var(--yellow);
+  background: rgba(255,214,10,0.08);
+  border: 1px solid rgba(255,214,10,0.2);
+  padding: 2px 9px;
+  border-radius: 6px;
+  white-space: nowrap;
+  display: none;
+  font-weight: 600;
+}
+
+/* ═══════════════════════════════════════════════════════
+   TRIAGE PANEL
+═══════════════════════════════════════════════════════ */
+#triage-panel { display: none; flex-direction: column; gap: 8px; }
+#triage-panel.show { display: flex; }
+#triage-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.triage-card {
+  border-radius: var(--radius-md);
+  border-left: 3px solid;
+  padding: 11px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+  transition: transform 0.15s;
+}
+.triage-card:hover { transform: translateX(2px); }
+.triage-card.RED    { border-color: var(--triage-red);    background: rgba(255,59,48,0.07); }
+.triage-card.YELLOW { border-color: var(--triage-yellow); background: rgba(255,214,10,0.05); }
+.triage-card.GREEN  { border-color: var(--triage-green);  background: rgba(52,209,104,0.06); }
+.triage-card.BLACK  { border-color: var(--triage-black);  background: rgba(99,99,117,0.07); }
+.triage-tag {
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 6px;
+  flex-shrink: 0;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+.RED    .triage-tag { background: rgba(255,59,48,0.18);   color: var(--triage-red); }
+.YELLOW .triage-tag { background: rgba(255,214,10,0.18);  color: var(--triage-yellow); }
+.GREEN  .triage-tag { background: rgba(52,209,104,0.18);  color: var(--triage-green); }
+.BLACK  .triage-tag { background: rgba(99,99,117,0.18);   color: var(--triage-black); }
+.triage-info {}
+.triage-priority { font-size: 15px; font-weight: 700; margin-bottom: 3px; }
+.triage-reason { font-size: 12px; color: var(--text-dim); line-height: 1.45; }
+
+/* ═══════════════════════════════════════════════════════
+   RESPONSE PANEL
+═══════════════════════════════════════════════════════ */
+#response-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  flex-shrink: 0;
+  box-shadow: var(--shadow-md);
+}
+#response-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 11px 16px;
+  background: linear-gradient(180deg, #16161e, var(--bg-raised));
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+#response-toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+#response-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+#nia-pill {
+  display: none;
+  align-items: center;
+  gap: 4px;
+  background: var(--blue-dim);
+  color: var(--blue);
+  border: 1px solid rgba(61,158,255,0.22);
+  padding: 2px 9px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+#nia-pill.show { display: flex; }
+#speak-btn {
+  background: var(--bg-card);
+  border: 1px solid var(--border-hi);
+  color: var(--text-dim);
+  padding: 5px 11px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+#speak-btn:hover { color: var(--text); border-color: #55556a; background: var(--bg-hover); }
+#speak-btn.speaking { color: var(--blue); border-color: var(--blue); background: var(--blue-dim); }
+#response-body {
+  padding: 20px 18px;
+  font-size: var(--response-size);
+  line-height: 1.7;
+  min-height: 88px;
+  max-height: min(52vh, 560px);
+  overflow-y: auto;
+}
+#response-placeholder {
+  color: var(--text-dim);
+  font-size: 15px;
+  text-align: center;
+  padding: 20px 18px 24px;
+  line-height: 1.65;
+  max-width: 28rem;
+  margin: 0 auto;
+}
+#response-placeholder::before {
+  content: '✚';
+  display: block;
+  font-size: 28px;
+  line-height: 1;
+  margin-bottom: 12px;
+  opacity: 0.35;
+  font-weight: 300;
+}
+/* Step blocks */
+.step-block {
+  display: flex;
+  gap: 13px;
+  margin-bottom: 16px;
+  align-items: flex-start;
+}
+.step-num {
+  flex-shrink: 0;
+  width: 27px; height: 27px;
+  background: linear-gradient(135deg, var(--red), #c0150d);
+  color: #fff;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  font-weight: 900;
+  margin-top: 2px;
+  box-shadow: 0 2px 6px rgba(255,59,48,0.35);
+  flex-shrink: 0;
+}
+.step-text {
+  font-size: var(--response-size);
+  line-height: 1.65;
+  font-weight: 450;
+}
+.step-text.warn { color: var(--red); font-weight: 700; }
+.warn-chip {
+  display: inline-block;
+  background: rgba(255,59,48,0.13);
+  color: var(--red);
+  font-size: 10px;
+  font-weight: 800;
+  padding: 1px 7px;
+  border-radius: 5px;
+  margin-right: 5px;
+  vertical-align: middle;
+  letter-spacing: 0.3px;
+}
+.monitor-block {
+  margin-top: 14px;
+  padding: 12px 16px;
+  background: rgba(255,149,0,0.08);
+  border-left: 3px solid var(--orange);
+  border-radius: var(--radius-sm);
+}
+.monitor-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--orange);
+  margin-bottom: 5px;
+}
+.monitor-text { font-size: 17px; line-height: 1.55; }
+.session-summary-block {
+  margin-top: 6px;
+  padding: 14px 16px;
+  background: rgba(10,132,255,0.08);
+  border-left: 3px solid #0A84FF;
+  border-radius: var(--radius-sm);
+}
+.session-summary-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #0A84FF;
+  margin-bottom: 8px;
+}
+.session-summary-body { font-size: var(--response-size); line-height: 1.65; }
+.section-head {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--text);
+  margin: 16px 0 7px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+.prose-line { font-size: var(--response-size); margin-bottom: 11px; line-height: 1.65; }
+.inline-strong { font-weight: 700; }
+
+/* Sources */
+#sources-strip {
+  display: none;
+  padding: 9px 16px 12px;
+  border-top: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 6px;
+}
+#sources-strip.show { display: flex; }
+/* Follow-up chat: FAB + popup (same scenario) */
+#followup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 190;
+  background: rgba(0, 0, 0, 0.48);
+  display: none;
+  align-items: flex-end;
+  justify-content: flex-end;
+  padding: 16px;
+  padding-bottom: max(88px, calc(env(safe-area-inset-bottom, 0px) + 72px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  box-sizing: border-box;
+}
+#followup-overlay.open {
+  display: flex;
+}
+#followup-popup {
+  width: min(420px, calc(100vw - 24px));
+  max-height: min(72vh, 560px);
+  background: var(--bg-card);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.45);
+  display: flex;
+  flex-direction: column;
+  outline: none;
+}
+#followup-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  max-height: inherit;
+}
+#followup-fab {
+  position: fixed;
+  z-index: 185;
+  right: max(16px, env(safe-area-inset-right, 0px));
+  bottom: max(16px, env(safe-area-inset-bottom, 0px));
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  background: linear-gradient(155deg, #6ec8ff 0%, #3d9eff 38%, #1a62c4 100%);
+  color: #fff;
+  font-size: 0;
+  cursor: pointer;
+  box-shadow:
+    0 8px 28px rgba(0, 0, 0, 0.42),
+    0 0 0 1px rgba(61, 158, 255, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25),
+    0 20px 50px rgba(61, 158, 255, 0.38);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  line-height: 1;
+  transition: transform 0.22s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.22s, opacity 0.2s ease;
+  animation: followup-fab-float 4.5s ease-in-out infinite;
+}
+@keyframes followup-fab-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
+}
+#followup-fab:hover {
+  animation: none;
+  transform: scale(1.07) translateY(-3px);
+  box-shadow:
+    0 14px 36px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 24px 56px rgba(61, 158, 255, 0.45);
+}
+#followup-fab.followup-fab--inactive {
+  opacity: 0.72;
+  animation: none;
+}
+.followup-fab-icon-svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+  flex-shrink: 0;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.25));
+}
+.followup-fab-text {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.85px;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+}
+.followup-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 12px 10px 14px;
+  background: linear-gradient(180deg, #16161e, var(--bg-raised));
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.followup-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+.followup-label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 1.1px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+#followup-speak-last {
+  background: transparent;
+  border: 1px solid var(--border-hi);
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+#followup-speak-last:hover:not(:disabled) { color: var(--text); border-color: var(--border); }
+#followup-speak-last:disabled { opacity: 0.35; cursor: not-allowed; }
+#followup-speak-last.speaking { color: var(--blue); border-color: var(--blue); }
+#followup-clear {
+  background: transparent;
+  border: 1px solid var(--border-hi);
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 8px;
+}
+#followup-clear:hover { color: var(--text); border-color: var(--border); }
+.followup-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--border-hi);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.followup-close:hover { color: var(--text); border-color: var(--border); }
+.followup-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 140px;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.followup-msg { border-radius: var(--radius-sm); padding: 10px 12px; max-width: 100%; }
+.followup-msg.user {
+  align-self: flex-end;
+  background: rgba(61,158,255,0.12);
+  border: 1px solid rgba(61,158,255,0.25);
+  color: var(--text);
+}
+.followup-msg.assistant {
+  align-self: stretch;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.followup-msg-content .prose-line { font-size: 14px; margin-bottom: 8px; }
+.followup-msg-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+.followup-msg-speak {
+  background: transparent;
+  border: 1px solid var(--border-hi);
+  color: var(--text-dim);
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.followup-msg-speak:hover { color: var(--text); border-color: var(--border); }
+.followup-msg-speak.speaking { border-color: var(--blue); color: var(--blue); }
+.followup-msg.error { color: var(--red); border-color: rgba(255,59,48,0.35); }
+.followup-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 16px 8px;
+  line-height: 1.55;
+}
+.followup-input-row {
+  display: flex;
+  gap: 8px;
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--border);
+  background: var(--bg-raised);
+}
+#followup-input {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius-md);
+  padding: 10px 12px;
+  color: var(--text);
+  font-size: 14px;
+}
+#followup-input:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 2px rgba(61,158,255,0.12);
+}
+#followup-send {
+  width: 44px;
+  min-height: 44px;
+  border-radius: var(--radius-md);
+  border: none;
+  background: linear-gradient(135deg, #3D9EFF, #2563c9);
+  color: #fff;
+  font-size: 18px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#followup-send:disabled { opacity: 0.35; cursor: not-allowed; }
+.source-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hi);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: 10px;
+  max-width: 190px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Detail prompt card */
+#detail-prompt {
+  background: rgba(255,59,48,0.04);
+  border: 1px solid rgba(255,59,48,0.18);
+  border-radius: var(--radius-lg);
+  padding: 14px 14px 16px;
+  display: none;
+  flex-direction: column;
+  gap: 10px;
+}
+#detail-prompt.show { display: flex; }
+#detail-prompt-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+#detail-prompt-title span { font-size: 16px; }
+#detail-prompt-body {
+  font-size: 13px;
+  color: var(--text-dim);
+  line-height: 1.6;
+}
+.detail-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.detail-chip {
+  background: var(--bg-card);
+  border: 1px solid var(--border-hi);
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 11px;
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.detail-chip:hover {
+  color: var(--red);
+  border-color: rgba(255,59,48,0.4);
+  background: var(--red-soft);
+}
+
+/* Cursor blink */
+.cursor {
+  display: inline-block;
+  width: 2px; height: 1em;
+  background: var(--text-dim);
+  margin-left: 3px;
+  vertical-align: text-bottom;
+  animation: blink 0.85s step-end infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* ═══════════════════════════════════════════════════════
+   QUICK PROTOCOLS FOOTER
+═══════════════════════════════════════════════════════ */
+#proto-footer {
+  flex-shrink: 0;
+  background: linear-gradient(0deg, #0a0a0e, var(--bg));
+  border-top: 1px solid var(--border);
+  padding: 10px 14px max(12px, env(safe-area-inset-bottom));
+  padding-left: max(14px, env(safe-area-inset-left));
+  padding-right: max(14px, env(safe-area-inset-right));
+}
+#proto-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+}
+#proto-row {
+  display: flex;
+  gap: 7px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+#proto-row::-webkit-scrollbar { display: none; }
+.proto-btn {
+  flex-shrink: 0;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hi);
+  color: var(--text-dim);
+  padding: 7px 13px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: all 0.18s;
+  box-shadow: var(--shadow-sm);
+  letter-spacing: 0.1px;
+}
+.proto-btn:hover {
+  background: var(--red-soft);
+  border-color: rgba(255,59,48,0.4);
+  color: var(--red);
+  box-shadow: 0 2px 8px rgba(255,59,48,0.12);
+  transform: translateY(-1px);
+}
+.proto-btn:active { transform: translateY(0); }
+
+/* ═══════════════════════════════════════════════════════
+   SETTINGS PANEL
+═══════════════════════════════════════════════════════ */
+#settings-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.7);
+  z-index: 200;
+  backdrop-filter: blur(4px);
+}
+#settings-overlay.open { display: block; }
+#settings-panel {
+  position: fixed;
+  top: 0; right: 0;
+  width: min(360px, 100vw);
+  height: 100dvh;
+  background: var(--bg-card);
+  border-left: 1px solid var(--border-hi);
+  overflow-y: auto;
+  padding: 22px 20px 36px;
+  transform: translateX(110%);
+  transition: transform 0.3s cubic-bezier(0.32,0,0.15,1);
+  z-index: 201;
+  box-shadow: -8px 0 40px rgba(0,0,0,0.6);
+}
+#settings-panel.open { transform: translateX(0); }
+.settings-title {
+  font-size: 19px;
+  font-weight: 900;
+  margin-bottom: 24px;
+  margin-top: 2px;
+  letter-spacing: -0.3px;
+}
+.settings-close {
+  position: absolute;
+  top: 18px; right: 18px;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hi);
+  color: var(--text-dim);
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  font-size: 14px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.15s;
+}
+.settings-close:hover { color: var(--text); background: var(--bg-hover); }
+.settings-group { margin-bottom: 24px; }
+.settings-group-label {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 9px;
+}
+.settings-input {
+  width: 100%;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 14px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  transition: border-color 0.18s, box-shadow 0.18s;
+}
+.settings-input:focus {
+  outline: none;
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(61,158,255,0.12);
+}
+.settings-saved {
+  font-size: 11px;
+  color: var(--green);
+  margin-top: 5px;
+  min-height: 16px;
+  transition: opacity 0.2s;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+}
+.settings-row-label { font-size: 14px; color: var(--text); }
+.settings-row-val { font-size: 13px; color: var(--text-dim); font-weight: 500; }
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 4px;
+  background: var(--bg-hover);
+  border-radius: 4px;
+  outline: none;
+  margin-top: 7px;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: var(--blue);
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(61,158,255,0.4);
+}
+.settings-seg {
+  display: flex;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  gap: 0;
+}
+.seg-btn {
+  flex: 1;
+  padding: 9px 4px;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.15s;
+  border-right: 1px solid var(--border);
+}
+.seg-btn:last-child { border-right: none; }
+.seg-btn.active { background: var(--blue); color: #fff; }
+.settings-select {
+  width: 100%;
+  background: var(--bg-raised);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.settings-select:focus { outline: none; border-color: var(--blue); }
+
+/* ═══════════════════════════════════════════════════════
+   ERROR TOAST
+═══════════════════════════════════════════════════════ */
+#toast {
+  position: fixed;
+  bottom: max(82px, calc(72px + env(safe-area-inset-bottom)));
+  left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: rgba(20,8,8,0.97);
+  border: 1px solid rgba(255,59,48,0.5);
+  color: var(--red);
+  padding: 10px 20px;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  max-width: 340px;
+  text-align: center;
+  opacity: 0;
+  transition: all 0.22s cubic-bezier(0.34,1.2,0.64,1);
+  z-index: 300;
+  pointer-events: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,59,48,0.08);
+}
+#toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* Mode auto-detect toast */
+#mode-detect-toast {
+  position: fixed;
+  top: 72px;
+  left: 50%;
+  transform: translateX(-50%) translateY(-8px);
+  background: rgba(10,20,10,0.95);
+  border: 1px solid rgba(52,209,104,0.4);
+  color: var(--green);
+  padding: 7px 16px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  opacity: 0;
+  transition: all 0.2s cubic-bezier(0.34,1.2,0.64,1);
+  z-index: 400;
+  pointer-events: none;
+  white-space: nowrap;
+}
+#mode-detect-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ═══════════════════════════════════════════════════════
+   TEXT SIZE VARIANTS
+═══════════════════════════════════════════════════════ */
+body.size-large  { --font-size: 18px; --response-size: 22px; }
+body.size-xlarge { --font-size: 20px; --response-size: 26px; }
+</style>
+</head>
+<body>
+
+<!-- ═══════ HEADER ═══════ -->
+<header id="header">
+  <div id="header-row">
+    <div id="logo">
+      <div id="logo-cross">✚</div>
+      <span id="logo-text">Disaster<span>Docs</span></span>
+      
+    </div>
+    <div id="header-actions">
+      <button type="button" id="emergency-call-btn" title="Emergency: location, summary, nearby hospitals, then call or SMS +1 (669) 341-7458" aria-label="Open emergency helper — location and message for dispatch">📞 Call 911</button>
+      <button type="button" id="settings-btn" title="Settings" aria-label="Open settings">⚙️</button>
+    </div>
+  </div>
+  <div class="mode-bar-wrap">
+    <div class="mode-bar-label">Situation type</div>
+    <div id="mode-bar" role="toolbar" aria-label="Disaster situation type">
+      <button type="button" class="mode-btn" data-mode="earthquake" aria-pressed="false">🌎 Earthquake</button>
+      <button type="button" class="mode-btn" data-mode="hurricane" aria-pressed="false">🌀 Hurricane</button>
+      <button type="button" class="mode-btn" data-mode="chemical" aria-pressed="false">☣️ Chemical</button>
+      <button type="button" class="mode-btn" data-mode="mass" aria-pressed="false">🚨 Mass Casualty</button>
+      <button type="button" class="mode-btn" data-mode="wildfire" aria-pressed="false">🔥 Wildfire</button>
+      <button type="button" class="mode-btn" data-mode="general" aria-pressed="false">📋 General</button>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════ LAYOUT ═══════ -->
+<div id="layout">
+
+  <!-- Sidebar: Query History -->
+  <aside id="sidebar">
+    <div id="sidebar-split">
+      <div id="sidebar-tabs" role="tablist" aria-label="Sidebar sections">
+        <button type="button" id="sidebar-tab-latest" role="tab" aria-selected="true" aria-controls="sidebar-panel-latest">Latest query</button>
+        <button type="button" id="sidebar-tab-hospitals" role="tab" aria-selected="false" aria-controls="sidebar-panel-hospitals">Hospitals</button>
+      </div>
+      <div id="sidebar-tab-panels">
+        <div id="sidebar-panel-latest" class="sidebar-tab-panel active" role="tabpanel" aria-labelledby="sidebar-tab-latest">
+          <div id="sidebar-latest-text">—</div>
+        </div>
+        <div id="sidebar-panel-hospitals" class="sidebar-tab-panel" role="tabpanel" aria-labelledby="sidebar-tab-hospitals">
+          <div id="sidebar-hosp-status">Open this tab, then tap Refresh to load nearby hospitals.</div>
+          <div id="sidebar-hosp-list"></div>
+          <button type="button" id="sidebar-hosp-refresh">↻ Refresh location &amp; hospitals</button>
+        </div>
+      </div>
+    </div>
+    <div id="sidebar-history-section">
+      <div id="sidebar-header">Query History</div>
+      <div id="history-list">
+        <div class="hist-empty">No queries yet.<br>Speak or type an emergency.</div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <main id="main">
+    <div id="scroll-area">
+
+      <section class="composer-card" id="composer-section" aria-labelledby="composer-heading">
+        <span id="composer-heading" class="composer-label">
+          Describe the situation
+          <span>Use your voice or type what you see — steps are generated from your description.</span>
+        </span>
+
+      <!-- Mic zone -->
+      <div id="mic-zone">
+        <button type="button" id="mic-btn" title="Tap to speak" aria-label="Start voice input"><svg class="mic-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="3" y="10" width="3" height="10" rx="1.5"/><rect x="8" y="2" width="3" height="18" rx="1.5"/><rect x="13" y="6" width="3" height="14" rx="1.5"/><rect x="18" y="12" width="3" height="8" rx="1.5"/></svg></button>
+        <div id="mic-status">Tap to speak</div>
+        <div id="transcript-live" aria-live="polite"></div>
+      </div>
+
+      <!-- Input row -->
+      <div id="input-row">
+        <label for="query-input" class="sr-only">Emergency scenario</label>
+        <textarea id="query-input" placeholder="Describe the emergency scenario..." rows="2" autocomplete="off" autocapitalize="sentences"></textarea>
+        <button type="button" id="send-btn" title="Submit" aria-label="Send scenario and get protocol"><svg class="send-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8-8-8z"/></svg></button>
+      </div>
+
+      <!-- Detail prompt -->
+      <div id="detail-prompt">
+        <div id="detail-prompt-title"><span>💬</span> Tell us more for better help</div>
+        <div id="detail-prompt-body">The more you describe, the better the advice. Add details like:
+how many people are hurt, what injuries you can see, what's around you, and what already happened.</div>
+        <div class="detail-chips" id="detail-chips">
+          <button class="detail-chip" data-append="about 3 people are injured">👥 Multiple people</button>
+          <button class="detail-chip" data-append="there is heavy bleeding">🩸 Heavy bleeding</button>
+          <button class="detail-chip" data-append="the person is not breathing">😮 Not breathing</button>
+          <button class="detail-chip" data-append="someone is trapped under debris">🧱 Person trapped</button>
+          <button class="detail-chip" data-append="the person is unconscious">💫 Unconscious</button>
+          <button class="detail-chip" data-append="I have no medical supplies nearby">🎒 No supplies</button>
+          <button class="detail-chip" data-append="the person is a child">👶 Child victim</button>
+          <button class="detail-chip" data-append="the person is elderly">🧓 Elderly person</button>
+        </div>
+      </div>
+
+      </section>
+
+      <!-- Status bar -->
+      <div id="status-bar" role="status" aria-live="polite" aria-atomic="true">
+        <div class="spin" aria-hidden="true"></div>
+        <span id="status-msg">Searching protocols...</span>
+        <span id="nia-offline-warn">⚠ Protocol search unavailable</span>
+      </div>
+
+      <!-- Triage panel -->
+      <div id="triage-panel">
+        <div id="triage-label">START Triage</div>
+        <div id="triage-cards"></div>
+      </div>
+
+      <!-- Response panel -->
+      <div id="response-panel">
+        <div id="response-toolbar">
+          <div id="response-toolbar-left">
+            <span id="response-label">Protocol response</span>
+            <span id="nia-pill">🔍 NIA Protocols</span>
+          </div>
+          <button type="button" id="speak-btn" aria-label="Read response aloud">🔊 Read aloud</button>
+        </div>
+        <div id="response-body">
+          <div id="response-placeholder">Ready. Speak or type an emergency scenario to receive step-by-step guidance.</div>
+        </div>
+        <div id="sources-strip"></div>
+      </div>
+
+    </div><!-- /scroll-area -->
+  </main>
+</div><!-- /layout -->
+
+<!-- AI follow-up agent: floating bubble + popup -->
+<div id="followup-overlay" aria-hidden="true">
+  <div id="followup-popup" role="dialog" aria-modal="true" aria-labelledby="followup-dialog-title" tabindex="-1">
+    <div id="followup-panel" aria-label="Follow-up questions">
+      <div class="followup-toolbar">
+        <span class="followup-label" id="followup-dialog-title">AI assistant</span>
+        <div class="followup-toolbar-right">
+          <button type="button" id="followup-speak-last" title="Read last reply aloud" aria-label="Read last reply aloud" disabled>🔊 Read last</button>
+          <button type="button" id="followup-clear" title="Clear follow-up chat">Clear chat</button>
+          <button type="button" id="followup-close" class="followup-close" title="Close" aria-label="Close assistant">✕</button>
+        </div>
+      </div>
+      <div id="followup-messages" class="followup-messages"></div>
+      <div class="followup-input-row">
+        <label for="followup-input" class="sr-only">Follow-up question</label>
+        <input type="text" id="followup-input" placeholder="Ask anything about this situation…" maxlength="2000" autocomplete="off" disabled>
+        <button type="button" id="followup-send" title="Send" disabled aria-label="Send follow-up">→</button>
+      </div>
+    </div>
+  </div>
+</div>
+<button type="button" id="followup-fab" aria-label="Open AI assistant" aria-expanded="false" aria-controls="followup-popup">
+  <svg class="followup-fab-icon-svg" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M5 3h14a3 3 0 013 3v8a3 3 0 01-3 3h-5.2L9 21v-4H5a3 3 0 01-3-3V6a3 3 0 013-3z"/></svg>
+  <span class="followup-fab-text">chat</span>
+</button>
+
+<!-- ═══════ QUICK PROTOCOLS ═══════ -->
+<div id="proto-footer">
+  <div id="proto-label">Quick Protocols</div>
+  <div id="proto-row">
+    <button class="proto-btn" data-query="Cardiac arrest — no pulse detected in adult patient, CPR needed">💓 Cardiac Arrest</button>
+    <button class="proto-btn" data-query="Severe uncontrolled arterial bleeding from extremity, tourniquet needed">🩸 Severe Bleeding</button>
+    <button class="proto-btn" data-query="Crush injury lower extremities, patient trapped under debris for 2 hours">⚙️ Crush Injury</button>
+    <button class="proto-btn" data-query="Suspected spinal cord injury, patient cannot move or feel legs after fall">🦴 Spinal Injury</button>
+    <button class="proto-btn" data-query="Major burn injury greater than 20 percent body surface area, full thickness">🔥 Burn &gt;20%</button>
+    <button class="proto-btn" data-query="Unconscious unresponsive child, unknown cause, not breathing normally">👶 Unconscious Child</button>
+  </div>
+</div>
+
+<!-- ═══════ SETTINGS PANEL ═══════ -->
+<div id="settings-overlay">
+  <div id="settings-panel">
+    <button class="settings-close" id="settings-close">✕</button>
+    <div class="settings-title">Settings</div>
+
+    <div class="settings-group">
+      <div class="settings-group-label">Groq API Key <span style="font-weight:400;color:var(--green);font-size:9px;letter-spacing:0">— FREE at console.groq.com</span></div>
+      <input type="password" class="settings-input" id="gemini-key" placeholder="gsk_...">
+      <div class="settings-saved" id="gemini-saved"></div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-label">Groq model</div>
+      <select class="settings-select" id="groq-model-select">
+        <option value="llama-3.1-8b-instant">Llama 3.1 8B — lower token use (recommended)</option>
+        <option value="llama-3.3-70b-versatile">Llama 3.3 70B — higher quality (uses more tokens)</option>
+      </select>
+      <div class="settings-saved" id="groq-model-hint" style="font-size:11px;color:var(--text-dim);margin-top:8px;line-height:1.45">Free tier has a daily token limit. 8B stretches it further; if you hit the limit, wait for reset or upgrade billing.</div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-label">Nia API Key</div>
+      <input type="password" class="settings-input" id="nia-key" placeholder="Enter Nia API key...">
+      <div class="settings-saved" id="nia-saved"></div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-label">Voice Speed</div>
+      <div class="settings-row">
+        <span class="settings-row-label">Speed</span>
+        <span class="settings-row-val" id="speed-val">1.0×</span>
+      </div>
+      <input type="range" id="voice-speed" min="0.5" max="2.0" step="0.1" value="1.0">
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-label">Text Size</div>
+      <div class="settings-seg" id="size-seg">
+        <button class="seg-btn active" data-size="normal">Normal</button>
+        <button class="seg-btn" data-size="large">Large</button>
+        <button class="seg-btn" data-size="xlarge">X-Large</button>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-group-label">Response Language</div>
+      <select class="settings-select" id="lang-select">
+        <option value="en">🇺🇸 English</option>
+        <option value="es">🇪🇸 Spanish</option>
+        <option value="fr">🇫🇷 French</option>
+        <option value="zh">🇨🇳 Mandarin</option>
+      </select>
+    </div>
+  </div>
+</div>
+
+<!-- Emergency: GPS + AI summary + hospitals + call/SMS -->
+<div id="emergency-overlay" aria-hidden="true">
+  <div id="emergency-panel" role="dialog" aria-modal="true" aria-labelledby="emergency-panel-title">
+    <div class="emergency-panel-head">
+      <div>
+        <h2 class="emergency-panel-title" id="emergency-panel-title">Emergency dispatch</h2>
+        <p class="emergency-panel-sub">Uses this device’s location (when allowed) to list nearby hospitals and attach coordinates to your message. Calls <strong>+1 (669) 341-7458</strong> — not 911.</p>
+      </div>
+      <button type="button" id="emergency-close" aria-label="Close">✕</button>
+    </div>
+    <div class="emergency-panel-body">
+      <div id="emergency-status" aria-live="polite"></div>
+      <div class="emergency-label">Message (SMS / share)</div>
+      <textarea id="emergency-message-body" rows="8" spellcheck="true" placeholder="Summary will appear here…"></textarea>
+      <div id="emergency-location-line"></div>
+      <div class="emergency-hospitals-title">Nearby hospitals (OpenStreetMap, approximate)</div>
+      <div id="emergency-hospitals-list"></div>
+      <div class="emergency-actions">
+        <a href="tel:+16693417458" id="emergency-tel-link" class="emergency-btn-call">📞 Call +1 (669) 341-7458</a>
+        <a href="sms:+16693417458" id="emergency-sms-link" class="emergency-btn-sms">💬 Send SMS with message</a>
+        <button type="button" id="emergency-copy-btn" class="emergency-btn-copy">Copy message</button>
+      </div>
+      <p class="emergency-hint-foot">SMS opens your messaging app with this text prefilled. Location requires browser permission; if denied, add your address manually. Hospital data is community-sourced and may be incomplete.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Error Toast -->
+<div id="toast"></div>
+<!-- Mode auto-detect Toast -->
+<div id="mode-detect-toast"></div>
+
+<!-- ═══════════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+/* ─────────────────────────────────────────────
+   STATE
+───────────────────────────────────────────── */
+const S = {
+  mode: null,
+  groqKey: '',
+  niaKey: '',
+  voiceSpeed: 1.0,
+  textSize: 'normal',
+  language: 'en',
+  history: [],
+  isRecording: false,
+  isSpeaking: false,
+  currentResponse: '',
+  recognition: null,
+  silenceTimer: null,
+  groqModel: 'llama-3.1-8b-instant',
+  /** Multi-turn follow-up chat for current session (user/assistant only, not persisted to history list) */
+  followupMessages: [],
+  /** Last GPS fix from emergency panel { lat, lon, ts } */
+  lastEmergencyLocation: null,
+};
+
+/* ─────────────────────────────────────────────
+   CONSTANTS
+───────────────────────────────────────────── */
+const GROQ_MODEL_DEFAULT = 'llama-3.1-8b-instant';
+const GROQ_BASE  = 'https://api.groq.com/openai/v1';
+const NIA_BASE   = 'https://apigcp.trynia.ai';
+/** SMS / tel target (not 911) */
+const EMERGENCY_SMS_BASE = 'sms:+16693417458';
+const EMERGENCY_DISPATCH_SYSTEM = `You write ONE short text message for emergency dispatch or SMS.
+Rules:
+- Use ONLY facts from the CONTEXT. Do not invent injuries, causes, or events the user did not describe.
+- Plain English, short lines, no markdown.
+- Say the sender is using the DisasterDocs emergency app.
+- Summarize: situation type, what they described, and key points from the app's guidance (very brief).
+- Do NOT include GPS coordinates or URLs (they are appended separately after your text).
+- Max about 900 characters.`;
+
+const MODE_CTX = {
+  earthquake: `DISASTER CONTEXT: EARTHQUAKE
+The bystander is in or near a collapsed building. Dust, rubble, broken glass, and twisted metal are everywhere.
+LIKELY INJURIES: Crushing wounds from fallen debris, broken bones, people trapped under heavy objects, cuts from shattered glass, dust inhalation, head injuries from falling objects.
+AVAILABLE MATERIALS ON SITE: Broken clothing, belts, shoelaces, wooden planks, metal pipes, rope, dust from concrete, clean water if pipes not burst, car first aid kits nearby, jackets and coats.
+SPECIAL HAZARDS: Aftershocks can happen anytime — always have an escape route. Gas leaks are common — no flames or sparks. Do NOT move someone with a possible neck or back injury unless building is actively collapsing on them.
+IMPROVISE WITH WHAT'S AROUND: Use clothing strips as bandages, wooden plank as a splint or stretcher, belt or tied shirt to stop bleeding, damp cloth over nose/mouth for dust.
+Tailor ALL advice to this earthquake context. Reference rubble, dust, trapped victims, and aftershock risk.`,
+
+  hurricane: `DISASTER CONTEXT: HURRICANE / FLOOD
+The bystander is dealing with flooding, high winds, and waterlogged conditions. Everything is wet.
+LIKELY INJURIES: Near-drowning (water in lungs), hypothermia from cold water, deep cuts from debris carried by floodwater, broken bones from falls, wounds contaminated with dirty floodwater, shock from cold and trauma.
+AVAILABLE MATERIALS ON SITE: Wet clothing, rope, floating objects (wood, coolers, doors), vehicles, tarps, dry blankets inside buildings, plastic bags, car supplies.
+SPECIAL HAZARDS: Floodwater is contaminated — treat ALL wounds as infected. Downed power lines in water are deadly — never approach. Hypothermia sets in fast even in warm weather when someone is wet.
+IMPROVISE WITH WHAT'S AROUND: Dry clothing layered over wet person for warmth, plastic bags over wounds to keep dirty water out until cleaned, rope tied to solid point for water rescue, vehicle roof as high ground.
+Tailor ALL advice to wet, flooded conditions. Emphasize contamination risk and warmth.`,
+
+  chemical: `DISASTER CONTEXT: CHEMICAL / HAZMAT SPILL
+There has been a chemical leak, spill, or gas release. The exact chemical may be unknown.
+LIKELY INJURIES: Burning or stinging eyes, skin burns, difficulty breathing, nausea, dizziness, people collapsed near the source, chemical on skin or clothing.
+AVAILABLE MATERIALS ON SITE: Large amounts of clean water (for rinsing), plastic bags, tape, clothing to cover skin, vehicles to shelter in, phone to look up the chemical name on signage.
+SPECIAL HAZARDS: DO NOT go near the source. Stay upwind and uphill from the spill. Do NOT touch the victim without protecting your own skin first — the chemical transfers. Some chemicals react with water, making rinsing dangerous (only rinse if unsure — it's still usually better than leaving chemical on skin).
+IMPROVISE WITH WHAT'S AROUND: Wet cloth over nose and mouth (filters some gases), plastic bags over hands as gloves, remove victim's contaminated clothing before helping, rinse skin with as much clean water as possible.
+Tailor ALL advice to the chemical exposure context. ALWAYS lead with "protect yourself first" and decontamination steps.`,
+
+  mass: `DISASTER CONTEXT: MASS CASUALTY — MULTIPLE INJURED PEOPLE
+There are many injured people and not enough helpers. The bystander must decide who to help first.
+LIKELY INJURIES: Mixed — some people with life-threatening bleeding or not breathing, some with broken bones, some with minor cuts, some in shock.
+AVAILABLE MATERIALS ON SITE: Whatever people have on them — belts, clothing, phones, car kits, bags, water bottles.
+SPECIAL HAZARDS: Do not spend all your time on one person while others die. Someone who is screaming loudly is conscious and breathing — they can wait. Prioritize quiet victims who are not moving.
+SORTING ORDER (simple):
+  → HELP FIRST: Not breathing, or bleeding so heavily clothing is soaked through
+  → HELP SECOND: Conscious but badly hurt, not moving, confused
+  → CAN WAIT: Awake, talking, walking, only minor cuts
+  → Focus less on: Someone not breathing with no pulse for more than 10 minutes
+IMPROVISE WITH WHAT'S AROUND: Assign bystanders specific tasks ("you press here", "you call 911", "you wave down ambulance"). Use clothing from multiple people to manage bleeding across victims.
+Tailor ALL advice to the multi-victim scenario. Always start with how to sort who to help first.`,
+
+  wildfire: `DISASTER CONTEXT: WILDFIRE / SMOKE / BURNS
+The bystander is near a wildfire or escaped from one. There is heavy smoke and possible burns.
+LIKELY INJURIES: Smoke inhalation (lungs filling with smoke), carbon monoxide poisoning from smoke (invisible, odorless — makes people confused and sleepy), thermal burns on skin and inside the airway, eye injuries from ash, cuts and broken bones from evacuating in panic.
+AVAILABLE MATERIALS ON SITE: Water, clothing, vehicles for shelter, wet towels or rags, dirt and sand (for smothering small flames on clothing).
+SPECIAL HAZARDS: Someone who breathed a lot of smoke may seem fine then collapse hours later — they need hospital even if they feel okay. Never go back into a burning building. If clothing is on fire — stop, drop, roll. Inhaled smoke can swell the airway silently — watch breathing carefully.
+IMPROVISE WITH WHAT'S AROUND: Wet cloth over nose and mouth for smoke, dirt or sand to smother flames on skin or ground, cool (not ice cold) water poured slowly over burns, cover burns loosely with clean dry cloth.
+Tailor ALL advice to fire and smoke conditions. Emphasize airway risk from smoke and how to cool burns with what's available.`,
+
+  general: `DISASTER CONTEXT: GENERAL EMERGENCY
+No specific disaster type. The bystander may be dealing with any kind of injury or emergency.
+Assume the person has NO medical equipment. Give practical advice using everyday objects.
+Always explain what to use if they don't have proper medical supplies.`,
+};
+
+const LANG_NAMES = { en: 'English', es: 'Spanish', fr: 'French', zh: 'Mandarin Chinese' };
+const LANG_VOICE  = { en: 'en-US', es: 'es-ES', fr: 'fr-FR', zh: 'zh-CN' };
+
+const SYSTEM_PROMPT = `You are an emergency response guide for everyday bystanders and first responders. Your job is to give clear, calm, plain-English instructions that ANYONE can follow — including someone who has never had medical training.
+
+LANGUAGE RULES — critical:
+- ZERO medical jargon. Never use words like: tourniquet, hemorrhage, arterial, subcutaneous, tachycardia, hypoxia, pneumothorax, hemostatic, occlusive, etc.
+- Always say the plain-English version: "bleeding" not "hemorrhage", "press hard on the wound" not "apply direct pressure", "they stop breathing" not "respiratory arrest"
+- When you MUST mention a medical term because there is no substitute, immediately explain it in brackets: e.g. "a tourniquet [tight wrap above the wound to stop blood flow]"
+
+EQUIPMENT RULES — critical:
+- Never assume the bystander has ANY medical equipment
+- For every piece of medical equipment mentioned, ALWAYS give an everyday improvised alternative on the same step, in this format:
+  → Use: [medical item] OR improvise with [belt / clothing / shoelace / plastic bag / etc.]
+- Examples:
+  - tourniquet → belt, necktie, strip of clothing twisted tight with a stick
+  - pressure bandage → folded T-shirt or cloth held very firmly
+  - gloves → plastic bag over hands, or wash hands thoroughly
+  - stretcher → door, flat board, jacket held between two people
+  - foil emergency blanket → regular blanket, coat, or layers of clothing
+  - cervical collar → rolled-up towel or clothing held around the neck
+
+OUTPUT FORMAT — follow exactly:
+1. Number every action step (1. 2. 3.)
+2. Start with the single most important action — no intro, no preamble
+3. Keep each step to 1-2 short sentences max. Use words a 12-year-old understands.
+4. Mark dangerous steps with ⚠️ but explain WHY in plain words
+5. When multiple people are injured, briefly sort them: who needs help first (can't breathe / heavy bleeding), who can wait (walking / minor cuts), who to focus on last (not breathing and no pulse for over 10 min)
+6. End with exactly one line: "MONITOR: [what to watch for in plain English]"
+7. Never say "seek medical help" as a step — always assume help is already called. Focus on what to DO right now.
+8. SCENARIO FIRST — The EMERGENCY SCENARIO line is the source of truth. Use DISASTER CONTEXT only when the scenario clearly involves that disaster (e.g. smoke and fire, collapsed building, floodwater, chemical fumes, many victims at once). If the scenario instead describes assault, a fight, a bottle or weapon injury, a car crash, a fall, bleeding from the head, or another injury that does NOT match the disaster type, IGNORE disaster-specific hazards (do not mention wildfire, smoke inhalation, earthquake rubble, etc. unless the user did). Give first aid only for what actually happened in the scenario.
+9. READ the full scenario description carefully. If the person mentioned specific details — number of victims, exact injuries, age of victim, what's nearby, what already happened — address EVERY single one of those details in your response. Do not give generic advice when specific details were given. Example: if they said "elderly woman, not breathing, only a scarf nearby", your steps must reference the elderly woman, the breathing problem, AND how to use the scarf.
+10. If the scenario is very vague (fewer than 5 words, no specific injury or situation described), respond with 2-3 short clarifying questions FIRST, then give a brief general guide. Ask things like: how many people, what injury can you see, how old is the person.
+11. Respond in the language specified
+12. DISASTER TYPE IS REQUIRED: If the user's message does not establish what kind of emergency or disaster this is (and the DISASTER CONTEXT is general or unclear), do NOT give numbered action steps yet. Instead, ask them briefly to (a) name or select the type of emergency, and (b) describe what happened and who is hurt. Only after the situation type is clear should you use the numbered step format. Never invent or blend unrelated example scenarios.
+13. FACTS ONLY — CAUSES AND TIMELINE: The EMERGENCY SCENARIO (and any follow-up they gave) is the only source of truth for what happened. Do NOT assert causes, earlier events, or medical explanations the user did not describe — for example do not say they "were probably choking," "may have aspirated," or "it's possible they had X" as if that were what occurred. Do not fill in a backstory. If something is unclear, ask a short question or give steps for what they DID report (e.g. nausea, trouble breathing now) and, if needed, separate optional lines clearly marked as "If X might have happened…" — never present speculation as fact.`;
+
+const TRIAGE_DETECT = [
+  /\d+\s*(patients?|victims?|casualties|people|persons?|injured|survivors?)/i,
+  /multiple|several|many|mass\s*casualty|MCI|triage/i,
+];
+
+/** Follow-up chat: same scenario, model sees full CONTEXT */
+const CHAT_FOLLOWUP_SYSTEM = `You are a calm emergency helper. The CONTEXT block contains the selected disaster mode, what the user described, and protocol guidance already given for THIS session.
+
+Answer follow-up questions ONLY about this same situation, using ONLY what appears in CONTEXT for what happened — do not invent causes, prior events, or diagnoses the user never said (e.g. do not claim they "probably choked" or "must have" had a blockage unless they described that). If you mention a possibility because they asked or the situation is ambiguous, label it clearly as a possibility, not as what occurred. You may clarify steps, explain why, what to watch for, what to do if something changes, or how to improvise with what's around. Do NOT invent a new disaster or a different scenario. Use plain English — no medical jargon (say "heavy bleeding" not "hemorrhage"). Keep answers concise unless they ask for more detail. If something important is unknown, say what you need to know.`;
+
+/* ─────────────────────────────────────────────
+   DOM REFS
+───────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+const micBtn         = $('mic-btn');
+const MIC_IDLE_HTML  = micBtn ? micBtn.innerHTML.trim() : '';
+const MIC_STOP_HTML  = '<svg class="mic-icon mic-icon--stop" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+const micStatus      = $('mic-status');
+const transcriptLive = $('transcript-live');
+const queryInput     = $('query-input');
+const sendBtn        = $('send-btn');
+const statusBar      = $('status-bar');
+const statusMsg      = $('status-msg');
+const niaOfflineWarn = $('nia-offline-warn');
+const triagePanel    = $('triage-panel');
+const triageCards    = $('triage-cards');
+const responseBody   = $('response-body');
+const niaPill        = $('nia-pill');
+const speakBtn       = $('speak-btn');
+const sourcesStrip   = $('sources-strip');
+const historyList    = $('history-list');
+const toast          = $('toast');
+const followupPanel  = $('followup-panel');
+const followupMessagesEl = $('followup-messages');
+const followupInput  = $('followup-input');
+const followupSendBtn = $('followup-send');
+const followupClearBtn = $('followup-clear');
+const followupFab      = $('followup-fab');
+const followupOverlay  = $('followup-overlay');
+const followupPopup    = $('followup-popup');
+const followupCloseBtn = $('followup-close');
+const followupSpeakLastBtn = $('followup-speak-last');
+
+let speakActiveButton = null;
+
+/* ─────────────────────────────────────────────
+   INIT
+───────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', () => {
+  loadPersistedState();
+  initModes();
+  initDetailPrompt();
+  initMic();
+  initInput();
+  initSpeakBtn();
+  initProtocols();
+  initSettings();
+  initFollowupChat();
+  initEmergencyPanel();
+  initSidebarHospitals();
+  renderHistory();
+  updateFollowupPanelState();
+});
+
+/* ─────────────────────────────────────────────
+   PERSIST
+───────────────────────────────────────────── */
+const GROQ_MODEL_IDS = new Set(['llama-3.1-8b-instant', 'llama-3.3-70b-versatile']);
+
+function loadPersistedState() {
+  S.groqKey    = localStorage.getItem('dd_groq')    || '';
+  S.niaKey     = localStorage.getItem('dd_nia')     || '';
+  S.voiceSpeed = parseFloat(localStorage.getItem('dd_speed') || '1.0');
+  S.textSize   = localStorage.getItem('dd_size')    || 'normal';
+  S.language   = localStorage.getItem('dd_lang')    || 'en';
+  S.history    = JSON.parse(localStorage.getItem('dd_history') || '[]');
+  const savedModel = localStorage.getItem('dd_groq_model');
+  S.groqModel  = savedModel && GROQ_MODEL_IDS.has(savedModel) ? savedModel : GROQ_MODEL_DEFAULT;
+
+  // Apply text size
+  applyTextSize(S.textSize);
+}
+
+function persist() {
+  localStorage.setItem('dd_groq',    S.groqKey);
+  localStorage.setItem('dd_nia',     S.niaKey);
+  localStorage.setItem('dd_speed',   S.voiceSpeed);
+  localStorage.setItem('dd_size',    S.textSize);
+  localStorage.setItem('dd_lang',    S.language);
+  localStorage.setItem('dd_groq_model', S.groqModel);
+  localStorage.setItem('dd_history', JSON.stringify(S.history));
+}
+
+/* ─────────────────────────────────────────────
+   DISASTER MODES
+───────────────────────────────────────────── */
+const MODE_KEYWORDS = {
+  earthquake: /earthquake|quake|aftershock|collapsed|rubble|trapped under|building fell|debris|structural|cave.?in|tremor/i,
+  hurricane:  /hurricane|flood|flooding|storm surge|rising water|typhoon|cyclone|submerged|swept away|drowning|torrential/i,
+  chemical:   /chemical|hazmat|toxic|fumes|gas leak|spill|contamina|poison|fume|choking smell|burning smell|biohazard|radiation/i,
+  mass:       /multiple people|many people|several people|mass casualty|MCI|crowd|patients|victims|casualties|\d+\s*(people|persons|injured|hurt)/i,
+  wildfire:   /fire|wildfire|smoke|burning|flames|forest fire|bush fire|ember|evacuat|carbon monoxide|inhalation/i,
+};
+
+function detectModeFromText(text) {
+  for (const [mode, rx] of Object.entries(MODE_KEYWORDS)) {
+    if (rx.test(text)) return mode;
+  }
+  return null;
+}
+
+function initModes() {
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => selectMode(btn.dataset.mode, false, false));
+  });
+}
+
+function selectMode(mode, autoDetected = false, skipSummary = false) {
+  const prevMode = S.mode;
+  // Toggle: clicking the already-active mode deselects it
+  if (!autoDetected && S.mode === mode) {
+    S.mode = null;
+    document.querySelectorAll('.mode-btn').forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-pressed', 'false');
+    });
+    updateDetailPrompt();
+    return;
+  }
+  const switchingMode = !autoDetected && !skipSummary && prevMode != null && prevMode !== mode;
+
+  S.mode = mode;
+  document.querySelectorAll('.mode-btn').forEach(b => {
+    const on = b.dataset.mode === mode;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+  updateDetailPrompt();
+  if (autoDetected) {
+    const label = document.querySelector(`.mode-btn[data-mode="${mode}"]`)?.textContent?.trim() || mode;
+    showModeToast(label);
+  } else if (switchingMode) {
+    void summarizeOnModeChange(prevMode, mode);
+  }
+}
+
+function showModeToast(label) {
+  const el = $('mode-detect-toast');
+  el.textContent = `Mode auto-set: ${label}`;
+  el.classList.add('show');
+  clearTimeout(showModeToast._t);
+  showModeToast._t = setTimeout(() => el.classList.remove('show'), 2800);
+}
+
+function updateDetailPrompt() {
+  const prompt      = $('detail-prompt');
+  const promptTitle = $('detail-prompt-title');
+  const promptBody  = $('detail-prompt-body');
+  const q           = queryInput.value.trim();
+
+  const composerHeading = $('composer-heading');
+  const composerSection = $('composer-section');
+  if (composerHeading && composerSection) {
+    const hideInstructions = S.mode === 'general';
+    composerHeading.hidden = hideInstructions;
+    composerSection.classList.toggle('composer-no-instructions', hideInstructions);
+    if (hideInstructions) {
+      composerSection.setAttribute('aria-label', 'Emergency scenario input');
+      composerSection.removeAttribute('aria-labelledby');
+    } else {
+      composerSection.removeAttribute('aria-label');
+      composerSection.setAttribute('aria-labelledby', 'composer-heading');
+    }
+  }
+
+  // General mode: no "tell us more" / chip suggestions — user asked for a neutral mode without nudges
+  if (S.mode === 'general') {
+    prompt.classList.remove('show');
+    return;
+  }
+
+  const noMode   = !S.mode;
+  const isVague  = isVagueQuery(q);
+
+  if (noMode && !q) {
+    // Nothing selected, nothing typed yet
+    promptTitle.innerHTML = '<span>👆</span> Select a situation type above';
+    promptBody.textContent = 'Tap one of the disaster types at the top — or just describe what happened in your own words below and we\'ll figure it out.';
+    prompt.classList.add('show');
+  } else if (q && isVague) {
+    // Something typed but too short
+    promptTitle.innerHTML = '<span>💬</span> Add more detail for better help';
+    promptBody.textContent = 'The more you describe, the more specific the advice. Tap a chip to add details, or keep typing.';
+    prompt.classList.add('show');
+  } else if (noMode && q) {
+    // Has text, no mode — that's fine, auto-detect will handle it
+    prompt.classList.remove('show');
+  } else {
+    prompt.classList.remove('show');
+  }
+}
+
+function modeButtonLabel(mode) {
+  if (!mode) return '';
+  return document.querySelector(`.mode-btn[data-mode="${mode}"]`)?.textContent?.trim() || mode;
+}
+
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+function buildEmergencyRawContext() {
+  const mode = modeButtonLabel(S.mode) || 'not selected';
+  let out = `SELECTED SITUATION TYPE (UI): ${mode}\n`;
+  const qDraft = queryInput && queryInput.value ? queryInput.value.trim() : '';
+  if (qDraft) out += `\nTEXT IN INPUT BOX (may not be sent yet): ${qDraft.slice(0, 800)}\n`;
+  const hist = (S.history || []).slice(0, 5);
+  if (hist.length) {
+    hist.forEach((h, i) => {
+      out += `\n--- Exchange ${i + 1} ---\nWhat they described: ${(h.query || '').slice(0, 900)}\nApp protocol response (excerpt):\n${(h.response || '').slice(0, 2800)}\n`;
+    });
+  } else {
+    const cur = (S.currentResponse || '').trim();
+    if (cur) out += `\nGUIDANCE ON SCREEN (no history list):\n${cur.slice(0, 4000)}\n`;
+  }
+  if (S.followupMessages && S.followupMessages.length) {
+    out += `\n--- Follow-up chat (excerpts) ---\n`;
+    S.followupMessages.slice(-10).forEach(m => {
+      out += `${m.role}: ${(m.content || '').slice(0, 400)}\n`;
+    });
+  }
+  return out.trim() || '(No scenario was loaded in the app yet.)';
+}
+
+function buildTemplateEmergencySummaryOnly() {
+  const mode = modeButtonLabel(S.mode) || 'not specified';
+  const h0 = S.history && S.history[0];
+  let out = `DisasterDocs emergency.\nSituation type: ${mode}.\n`;
+  if (h0) {
+    out += `Reported: ${(h0.query || '').slice(0, 400)}\n`;
+    out += `Guidance (short): ${(h0.response || '').slice(0, 500)}…\n`;
+  } else if (S.currentResponse) {
+    out += `Guidance on screen: ${S.currentResponse.slice(0, 600)}…\n`;
+  } else {
+    out += 'User opened emergency without a full scenario in the app.\n';
+  }
+  if (S.followupMessages && S.followupMessages.length) {
+    const last = S.followupMessages.slice(-4);
+    out += `Recent Q&A: ${last.map(m => `${m.role}: ${(m.content || '').slice(0, 120)}`).join(' | ')}\n`;
+  }
+  if (!S.groqKey) out += '\n(Add a Groq API key in Settings for a shorter AI-written summary next time.)';
+  return out;
+}
+
+function parseHospitalOverpassElements(j, lat, lon, maxNames) {
+  const out = [];
+  for (const el of j.elements || []) {
+    let la; let lo;
+    if (el.type === 'node') { la = el.lat; lo = el.lon; }
+    else if (el.center) { la = el.center.lat; lo = el.center.lon; }
+    else continue;
+    const name = (el.tags && (el.tags.name || el.tags['name:en'])) || 'Hospital';
+    const distKm = haversineKm(lat, lon, la, lo);
+    out.push({ name, distKm, lat: la, lon: lo });
+  }
+  out.sort((a, b) => a.distKm - b.distKm);
+  const seen = new Set();
+  const uniq = [];
+  const cap = maxNames ?? 8;
+  for (const h of out) {
+    const key = h.name.toLowerCase().slice(0, 48);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniq.push(h);
+    if (uniq.length >= cap) break;
+  }
+  return uniq;
+}
+
+function overpassRemarkIsFatal(remark) {
+  const s = String(remark || '');
+  return /runtime\s+error|timeout|too\s+many\s+requests|quota|503|504/i.test(s);
+}
+
+/** Returns null if both GET/POST failed; otherwise an array (maybe empty). */
+async function tryOverpassOnce(ep, q, lat, lon, maxNames) {
+  const body = 'data=' + encodeURIComponent(q);
+  const getUrl = `${ep}?data=${encodeURIComponent(q)}`;
+  const attempts = [
+    () => fetch(getUrl, { method: 'GET', mode: 'cors' }),
+    () => fetch(ep, {
+      method: 'POST',
+      mode: 'cors',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+    }),
+  ];
+  for (const doFetch of attempts) {
+    try {
+      const r = await doFetch();
+      if (!r.ok) continue;
+      const text = await r.text();
+      let j;
+      try {
+        j = JSON.parse(text);
+      } catch (_) {
+        continue;
+      }
+      if (overpassRemarkIsFatal(j.remark)) continue;
+      return parseHospitalOverpassElements(j, lat, lon, maxNames);
+    } catch (err) {
+      console.warn('[Overpass]', ep, err);
+    }
+  }
+  return null;
+}
+
+/**
+ * Single GET to lz4 — one round trip, no mirror race (avoids waiting on the slowest of parallel calls).
+ */
+async function overpassLz4Mini(lat, lon, maxNames) {
+  const rM = Math.min(11000, 12000);
+  const miniQ = `[out:json][timeout:8];
+node["amenity"="hospital"](around:${rM},${lat},${lon});
+out center 14;`;
+  const url = `https://lz4.overpass-api.de/api/interpreter?data=${encodeURIComponent(miniQ)}`;
+  try {
+    const r = await fetch(url, { method: 'GET', mode: 'cors' });
+    if (!r.ok) return [];
+    const j = JSON.parse(await r.text());
+    if (overpassRemarkIsFatal(j.remark)) return [];
+    return parseHospitalOverpassElements(j, lat, lon, maxNames);
+  } catch (e) {
+    console.warn('[Overpass lz4 mini]', e);
+    return [];
+  }
+}
+
+/**
+ * Photon (komoot) — works when Overpass is blocked, rate-limited, or slow (CORS-friendly GET).
+ */
+async function fetchHospitalsPhoton(lat, lon, maxKm, maxNames) {
+  try {
+    const url = `https://photon.komoot.io/api/?q=hospital&lat=${lat}&lon=${lon}&limit=28&lang=en`;
+    const r = await fetch(url, { method: 'GET', mode: 'cors' });
+    if (!r.ok) return [];
+    const j = await r.json();
+    const out = [];
+    for (const f of j.features || []) {
+      const c = f.geometry && f.geometry.coordinates;
+      if (!c || c.length < 2) continue;
+      const lo = c[0];
+      const la = c[1];
+      const distKm = haversineKm(lat, lon, la, lo);
+      if (distKm > maxKm + 3) continue;
+      const p = f.properties || {};
+      const name = p.name || p.street || p.city || 'Hospital';
+      const pStr = `${name} ${p.type || ''} ${p.osm_value || ''}`;
+      if (!/hospital|medical|clinic|health|trauma|emergency|urgent|care/i.test(pStr)
+          && !(p.osm_key === 'amenity' && /hospital|clinic|doctors|pharmacy/i.test(String(p.osm_value)))) {
+        continue;
+      }
+      out.push({ name, distKm, lat: la, lon: lo });
+    }
+    out.sort((a, b) => a.distKm - b.distKm);
+    const cap = maxNames ?? 8;
+    let uniq = [];
+    const seen = new Set();
+    for (const h of out) {
+      const key = h.name.toLowerCase().slice(0, 40);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      uniq.push(h);
+      if (uniq.length >= cap) break;
+    }
+    if (uniq.length === 0) {
+      const broad = [];
+      for (const f of j.features || []) {
+        const c = f.geometry && f.geometry.coordinates;
+        if (!c || c.length < 2) continue;
+        const lo = c[0];
+        const la = c[1];
+        const distKm = haversineKm(lat, lon, la, lo);
+        if (distKm > maxKm) continue;
+        const p = f.properties || {};
+        const name = p.name || p.street || 'Medical / POI';
+        broad.push({ name, distKm, lat: la, lon: lo });
+      }
+      broad.sort((a, b) => a.distKm - b.distKm);
+      seen.clear();
+      for (const h of broad) {
+        const key = h.name.toLowerCase().slice(0, 40);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        uniq.push(h);
+        if (uniq.length >= cap) break;
+      }
+    }
+    return uniq;
+  } catch (e) {
+    console.warn('[Photon hospitals]', e);
+    return [];
+  }
+}
+
+/**
+ * Hospitals near a point.
+ * Default (fast): one lz4 mini Overpass GET + Photon in parallel — wall time ≈ max of the two (not sum).
+ * Single mirror only (no triple race). Prefer OSM list when non-empty.
+ * opts.complete: slower sequential full Overpass (ways/relations) for emergency use.
+ */
+async function fetchNearbyHospitals(lat, lon, opts = {}) {
+  const radius = opts.radius ?? 15000;
+  const maxKm = radius / 1000;
+  const maxNames = opts.maxNames ?? 8;
+
+  if (opts.complete) {
+    const ot = opts.overpassTimeout ?? 22;
+    const maxOut = opts.maxOut ?? 22;
+    const fullQ = `[out:json][timeout:${ot}];
+(
+  node["amenity"="hospital"](around:${radius},${lat},${lon});
+  way["amenity"="hospital"](around:${radius},${lat},${lon});
+  relation["amenity"="hospital"](around:${radius},${lat},${lon});
+);
+out center ${maxOut};`;
+    const endpoints = [
+      'https://lz4.overpass-api.de/api/interpreter',
+      'https://overpass-api.de/api/interpreter',
+      'https://z.overpass-api.de/api/interpreter',
+    ];
+    for (const ep of endpoints) {
+      const got = await tryOverpassOnce(ep, fullQ, lat, lon, maxNames);
+      if (got !== null && got.length > 0) return got;
+    }
+    const ph = await fetchHospitalsPhoton(lat, lon, maxKm, maxNames);
+    return ph;
+  }
+
+  const [osmList, photonList] = await Promise.all([
+    overpassLz4Mini(lat, lon, maxNames),
+    fetchHospitalsPhoton(lat, lon, maxKm, maxNames),
+  ]);
+  if (osmList.length > 0) return osmList;
+  return photonList;
+}
+
+function shortenQueryForSidebar(q, maxLen) {
+  const s = (q || '').trim();
+  if (!s) return '—';
+  if (s.length <= maxLen) return s;
+  return `${s.slice(0, maxLen - 1).trim()}…`;
+}
+
+/** Rough ETA from straight-line km (~urban driving guess; sidebar skips slow routing APIs). */
+function estimateDriveMinFromKm(distKm) {
+  return Math.max(1, Math.round((distKm / 32) * 60));
+}
+
+let sidebarHospitalsLoadedOnce = false;
+
+function setSidebarTab(which) {
+  const tLatest = $('sidebar-tab-latest');
+  const tHosp = $('sidebar-tab-hospitals');
+  const pLatest = $('sidebar-panel-latest');
+  const pHosp = $('sidebar-panel-hospitals');
+  const sidebar = $('sidebar');
+  if (!tLatest || !tHosp || !pLatest || !pHosp) return;
+  const isLatest = which === 'latest';
+  tLatest.setAttribute('aria-selected', isLatest ? 'true' : 'false');
+  tHosp.setAttribute('aria-selected', isLatest ? 'false' : 'true');
+  pLatest.classList.toggle('active', isLatest);
+  pHosp.classList.toggle('active', !isLatest);
+  sidebar?.classList.toggle('sidebar-hospitals-tab', !isLatest);
+  if (!isLatest && !sidebarHospitalsLoadedOnce) {
+    sidebarHospitalsLoadedOnce = true;
+    void refreshSidebarHospitals();
+  }
+}
+
+function updateSidebarLatestText() {
+  const el = $('sidebar-latest-text');
+  if (!el) return;
+  const last = S.history && S.history[0];
+  const q = last
+    ? last.query
+    : (queryInput && queryInput.value ? queryInput.value.trim() : '');
+  el.textContent = shortenQueryForSidebar(q, 96);
+}
+
+async function refreshSidebarHospitals() {
+  const statusEl = $('sidebar-hosp-status');
+  const listEl = $('sidebar-hosp-list');
+  if (!statusEl || !listEl) return;
+
+  statusEl.classList.remove('loc-err');
+  statusEl.textContent = 'Locating… (fast mode)';
+  listEl.innerHTML = '';
+
+  if (!navigator.geolocation) {
+    statusEl.classList.add('loc-err');
+    statusEl.textContent = 'Location not available in this browser.';
+    return;
+  }
+
+  try {
+    const pos = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: false,
+        maximumAge: 600000,
+        timeout: 12000,
+      });
+    });
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    S.lastEmergencyLocation = { lat, lon, ts: Date.now() };
+    statusEl.textContent = 'Loading hospitals…';
+    const hospitals = await fetchNearbyHospitals(lat, lon, {
+      radius: 12000,
+      overpassTimeout: 20,
+      maxOut: 14,
+      maxNames: 8,
+    });
+    statusEl.textContent = `${lat.toFixed(3)}, ${lon.toFixed(3)} · ${hospitals.length} nearby`;
+    if (hospitals.length === 0) {
+      const fileHint = location.protocol === 'file:'
+        ? ' Opening as a saved file blocks map APIs — use http://localhost instead.'
+        : '';
+      listEl.innerHTML = `<div class="sidebar-hosp-row"><span class="sidebar-hosp-name">No hospitals found.${fileHint} Try Refresh.</span></div>`;
+      return;
+    }
+    listEl.innerHTML = hospitals.map(h => {
+      const mapUrl = `https://www.google.com/maps?q=${h.lat},${h.lon}`;
+      const mins = estimateDriveMinFromKm(h.distKm);
+      return `<div class="sidebar-hosp-row">
+        <span class="sidebar-hosp-name">${escHtml(h.name)}</span>
+        <div class="sidebar-hosp-meta">
+          <span>${h.distKm.toFixed(1)} km</span>
+          <span>·</span>
+          <span>~${mins} min est.</span>
+          <a href="${mapUrl}" target="_blank" rel="noopener">Directions</a>
+        </div>
+      </div>`;
+    }).join('');
+  } catch (e) {
+    statusEl.classList.add('loc-err');
+    if (e.code === 1) {
+      statusEl.textContent = 'Location blocked — allow access (use HTTPS or localhost).';
+    } else if (e.code === 3) {
+      statusEl.textContent = 'Location timed out — tap Refresh or check Wi‑Fi.';
+    } else {
+      statusEl.textContent = e.message || 'Location failed.';
+    }
+  }
+}
+
+function initSidebarHospitals() {
+  $('sidebar-tab-latest')?.addEventListener('click', () => setSidebarTab('latest'));
+  $('sidebar-tab-hospitals')?.addEventListener('click', () => setSidebarTab('hospitals'));
+  $('sidebar-hosp-refresh')?.addEventListener('click', () => {
+    sidebarHospitalsLoadedOnce = true;
+    void refreshSidebarHospitals();
+  });
+  updateSidebarLatestText();
+}
+
+async function fetchEmergencyAiSummary(rawCtx) {
+  if (!S.groqKey) return null;
+  const resp = await fetch(`${GROQ_BASE}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${S.groqKey}`,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({
+      model:       S.groqModel,
+      stream:      false,
+      max_tokens:  500,
+      temperature: 0.2,
+      messages: [
+        { role: 'system', content: EMERGENCY_DISPATCH_SYSTEM },
+        { role: 'user',   content: '--- CONTEXT ---\n' + rawCtx.slice(0, 12000) },
+      ],
+    }),
+  });
+  if (!resp.ok) return null;
+  const j = await resp.json();
+  return j.choices?.[0]?.message?.content?.trim() || null;
+}
+
+function composeFullEmergencyMessage(mainText, lat, lon, hospitals) {
+  let out = mainText.trim();
+  if (lat != null && lon != null) {
+    const mapUrl = `https://www.google.com/maps?q=${lat},${lon}`;
+    out += `\n\n--- GPS — ${lat.toFixed(5)}, ${lon.toFixed(5)} ---\nMap: ${mapUrl}`;
+  }
+  if (hospitals && hospitals.length) {
+    out += '\n\nNearby hospitals (approx., map data):';
+    hospitals.slice(0, 6).forEach((h, i) => {
+      out += `\n${i + 1}. ${h.name} (~${h.distKm.toFixed(1)} km)`;
+    });
+  }
+  if (out.length > 1600) out = out.slice(0, 1597) + '…';
+  return out;
+}
+
+function renderEmergencyHospitals(hospitals, lat, lon) {
+  const el = $('emergency-hospitals-list');
+  if (!el) return;
+  if (!hospitals.length) {
+    el.innerHTML = '<div class="emergency-hospital-row"><span class="emergency-hospital-name">No hospitals found in this radius (or lookup failed). Use Maps or your local emergency number.</span></div>';
+    return;
+  }
+  el.innerHTML = hospitals.map(h => {
+    const mapUrl = `https://www.google.com/maps?q=${h.lat},${h.lon}`;
+    return `<div class="emergency-hospital-row">
+      <div>
+        <div class="emergency-hospital-name">${escHtml(h.name)}</div>
+        <a href="${mapUrl}" target="_blank" rel="noopener">Directions</a>
+      </div>
+      <span class="emergency-hospital-dist">${h.distKm.toFixed(1)} km</span>
+    </div>`;
+  }).join('');
+}
+
+function updateEmergencySmsLink(body) {
+  const a = $('emergency-sms-link');
+  if (!a) return;
+  const enc = encodeURIComponent(body || '');
+  a.href = `${EMERGENCY_SMS_BASE}?body=${enc}`;
+}
+
+function closeEmergencyPanel() {
+  const o = $('emergency-overlay');
+  if (!o) return;
+  o.classList.remove('open');
+  o.setAttribute('aria-hidden', 'true');
+}
+
+async function openEmergencyPanel() {
+  closeSettings();
+  const overlay = $('emergency-overlay');
+  const status = $('emergency-status');
+  const textarea = $('emergency-message-body');
+  const locLine = $('emergency-location-line');
+  if (!overlay || !status || !textarea || !locLine) return;
+
+  overlay.classList.add('open');
+  overlay.setAttribute('aria-hidden', 'false');
+  status.classList.remove('error');
+  status.textContent = 'Requesting location…';
+  textarea.value = '';
+  locLine.innerHTML = '';
+  $('emergency-hospitals-list').innerHTML = '';
+
+  let lat = null;
+  let lon = null;
+  try {
+    if (!navigator.geolocation) throw new Error('Geolocation not supported on this device');
+    const pos = await new Promise((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true,
+        timeout: 22000,
+        maximumAge: 0,
+      });
+    });
+    lat = pos.coords.latitude;
+    lon = pos.coords.longitude;
+    S.lastEmergencyLocation = { lat, lon, ts: Date.now() };
+    locLine.innerHTML = `📍 <strong>${lat.toFixed(5)}, ${lon.toFixed(5)}</strong> · <a href="https://www.google.com/maps?q=${lat},${lon}" target="_blank" rel="noopener">Open in Maps</a>`;
+  } catch (e) {
+    status.classList.add('error');
+    const msg = e.code === 1
+      ? 'Location permission denied — you can still call or send SMS; add your address in the message.'
+      : (e.message || 'Could not get location.');
+    status.textContent = msg;
+    locLine.innerHTML = 'Location unavailable. Type your address or area in the message above.';
+  }
+
+  status.textContent = 'Loading hospitals and summary…';
+  const rawCtx = buildEmergencyRawContext();
+
+  let hospitals = [];
+  if (lat != null && lon != null) {
+    try {
+      hospitals = await fetchNearbyHospitals(lat, lon);
+    } catch (err) {
+      console.warn('[emergency hospitals]', err);
+    }
+  }
+  renderEmergencyHospitals(hospitals, lat, lon);
+
+  let mainText = '';
+  if (S.groqKey) {
+    try {
+      const ai = await fetchEmergencyAiSummary(rawCtx);
+      if (ai) mainText = ai;
+    } catch (err) {
+      console.warn('[emergency ai]', err);
+    }
+  }
+  if (!mainText) mainText = buildTemplateEmergencySummaryOnly();
+
+  const full = composeFullEmergencyMessage(mainText, lat, lon, hospitals);
+  textarea.value = full;
+  updateEmergencySmsLink(full);
+
+  status.classList.remove('error');
+  status.textContent = lat != null && lon != null
+    ? 'Ready — review the message, then call or send SMS.'
+    : 'Ready — add your location in the message if needed, then call or send SMS.';
+}
+
+function initEmergencyPanel() {
+  const btn = $('emergency-call-btn');
+  const overlay = $('emergency-overlay');
+  if (!btn || !overlay) return;
+
+  btn.addEventListener('click', () => {
+    void openEmergencyPanel();
+  });
+
+  $('emergency-close')?.addEventListener('click', () => closeEmergencyPanel());
+  overlay.addEventListener('click', e => {
+    if (e.target === overlay) closeEmergencyPanel();
+  });
+
+  $('emergency-copy-btn')?.addEventListener('click', async () => {
+    const t = $('emergency-message-body')?.value || '';
+    try {
+      await navigator.clipboard.writeText(t);
+      showToast('Message copied');
+    } catch (_) {
+      showToast('Copy failed — select text manually');
+    }
+  });
+
+  $('emergency-message-body')?.addEventListener('input', e => {
+    updateEmergencySmsLink(e.target.value);
+  });
+
+  $('emergency-sms-link')?.addEventListener('click', e => {
+    if (!($('emergency-message-body')?.value || '').trim()) {
+      e.preventDefault();
+      showToast('Wait for the message to load, or type something first');
+    }
+  });
+}
+
+/** Disaster types that count as an explicit situation (not "general" / unset). */
+const SPECIFIC_DISASTER_MODES = new Set(['earthquake', 'hurricane', 'chemical', 'mass', 'wildfire']);
+
+/**
+ * Only summarize when the user has tied the session to a disaster:
+ * selected a specific mode, had one on a past query, or wrote/said text that matches a disaster keyword.
+ */
+function hasExplicitDisasterEngagement(prevMode, newMode) {
+  if (SPECIFIC_DISASTER_MODES.has(prevMode) || SPECIFIC_DISASTER_MODES.has(newMode)) return true;
+  if (S.history.some(h => h.mode && SPECIFIC_DISASTER_MODES.has(h.mode))) return true;
+  const texts = [queryInput.value, ...S.history.map(h => h.query || '')].filter(Boolean);
+  if (texts.some(t => detectModeFromText(t))) return true;
+  // Session summary when switching to/from General if there is real saved history (general-only sessions)
+  if ((prevMode === 'general' || newMode === 'general') && S.history.length > 0) return true;
+  return false;
+}
+
+async function summarizeOnModeChange(prevMode, newMode) {
+  const hasContent =
+    S.history.length > 0 ||
+    (S.currentResponse && S.currentResponse.trim()) ||
+    queryInput.value.trim();
+  if (!hasContent) return;
+  if (!hasExplicitDisasterEngagement(prevMode, newMode)) return;
+
+  showStatus('Summarizing what happened so far…');
+  try {
+    let text;
+    if (S.groqKey) {
+      text = await callSessionSummaryGroq(prevMode, newMode);
+    } else {
+      text = buildLocalSessionSummary(prevMode, newMode);
+    }
+    if (!text || !text.trim()) return;
+    const placeholder = $('response-placeholder');
+    if (placeholder) placeholder.remove();
+    responseBody.innerHTML = `<div class="session-summary-block">
+      <div class="session-summary-label">Session summary</div>
+      <div class="session-summary-body">${buildHTML(text)}</div>
+    </div>`;
+    S.currentResponse = text;
+  } catch (err) {
+    console.warn('[Session summary]', err);
+    showToast((err.message || 'Could not summarize').slice(0, 100));
+  } finally {
+    hideStatus();
+  }
+}
+
+function buildLocalSessionSummary(prevMode, newMode) {
+  const lines = [
+    `You switched from ${modeButtonLabel(prevMode)} to ${modeButtonLabel(newMode)}.`,
+    '',
+    'Most recent exchange only:',
+  ];
+  const latest = S.history[0];
+  if (latest) {
+    const m = latest.mode ? ` [mode: ${latest.mode}]` : '';
+    lines.push(`Scenario: ${latest.query}${m}`);
+  } else {
+    lines.push('(No saved exchange yet.)');
+  }
+  const draft = queryInput.value.trim();
+  if (draft) lines.push('', `Draft in the box: ${draft}`);
+  return lines.join('\n');
+}
+
+async function callSessionSummaryGroq(prevMode, newMode) {
+  if (!S.groqKey) throw new Error('No Groq API key');
+
+  const chunks = [];
+  // Only the latest exchange — avoids mixing unrelated quick-protocol or past scenarios
+  const latestList = S.history.length ? [S.history[0]] : [];
+  latestList.forEach((h, i) => {
+    const respSnippet = (h.response || '').slice(0, 1400);
+    chunks.push(`Latest exchange (mode: ${h.mode || 'unknown'})\nScenario: ${h.query}\nGuidance given: ${respSnippet}`);
+  });
+  const draft = queryInput.value.trim();
+  if (draft) chunks.push(`Unsent draft in the input box:\n${draft}`);
+
+  const bundle = chunks.join('\n\n---\n\n') || '(No saved exchanges yet.)';
+
+  const userMsg = `The responder changed disaster context from "${modeButtonLabel(prevMode)}" to "${modeButtonLabel(newMode)}".
+
+The log below contains AT MOST ONE recent exchange. Do not list or infer other scenarios, past taps, or quick-protocol examples that are not in this log.
+
+Summarize ONLY what is explicitly present in the session log below.
+
+STRICT RULES:
+- List situations, injuries, and disaster types ONLY if they appear in the log (user scenario text or assistant reply). Never invent, assume, or add examples.
+- Do NOT write phrases like "the session covered earthquakes, wildfires, chemical exposure…" unless those exact topics appear in the log.
+- If the log does not clearly name a disaster type or injury, say only: "No specific disaster type or injury has been described in this session yet."
+- Use short bullets or numbered points. Plain English, no medical jargon.
+
+Cover only what the log supports:
+1) What was actually described (situation / injuries), or state that nothing specific was described
+2) What guidance was already given (only if visible in the log)
+3) What is still unclear
+
+Session log:
+${bundle}`;
+
+  const resp = await fetch(`${GROQ_BASE}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${S.groqKey}`,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({
+      model:       S.groqModel,
+      stream:      false,
+      max_tokens:  550,
+      temperature: 0.1,
+      messages: [
+        {
+          role: 'system',
+          content: 'You summarize emergency first-aid sessions for bystanders. Be brief and strictly faithful to the session text. Never invent disaster types, injuries, or scenarios not stated in the log. If the log is vague or empty on specifics, say so plainly. No medical jargon.',
+        },
+        { role: 'user', content: userMsg },
+      ],
+    }),
+  });
+
+  if (!resp.ok) {
+    let errMsg = `Groq API error ${resp.status}`;
+    try {
+      const e = await resp.json();
+      errMsg = e.error?.message || errMsg;
+    } catch (_) {}
+    throw new Error(errMsg);
+  }
+  const data = await resp.json();
+  return data.choices?.[0]?.message?.content?.trim() || '';
+}
+
+function isVagueQuery(q) {
+  if (!q) return false;
+  const words = q.trim().split(/\s+/).filter(w => w.length > 1);
+  return words.length < 5;
+}
+
+function hasSpecificDisasterModeSelected() {
+  return S.mode && S.mode !== 'general';
+}
+
+/** Enough words + injury/episode cues — e.g. Quick Protocols, assault, long scenario without "earthquake" in text */
+function hasDetailedEmergencyScenario(q) {
+  const words = q.trim().split(/\s+/).filter(w => w.length > 1);
+  const cue = /injur|bleed|breath|pain|trapped|burn|unconscious|victim|person|people|hurt|blood|collapse|fall|stuck|cardiac|pulse|cpr|spinal|crush|arrest|tourniquet|arter|fract|neck|back|chok|seiz|allerg|drown|wound|cut|bone|arterial|extremity|respond|unresponsive|surface|thickness|casualty|patient|adult|child|elderly|assault|bottle|hit|hitting|struck|fight|weapon|stabbed|shot|punched|mugged/i.test(q);
+  if (words.length >= 6) return cue;
+  // Shorter lines still count if they clearly describe harm (e.g. bottle assault, bleeding head)
+  if (words.length >= 4 && cue) return true;
+  return false;
+}
+
+/**
+ * Block full protocol until disaster/situation is clear: specific mode from UI, disaster named in text,
+ * or a detailed scenario (voice/text). Prevents running protocols on empty "help" or unrelated history noise.
+ */
+function needsDisasterContextBeforeProtocol(q) {
+  const text = q.trim();
+  const namedDisaster = detectModeFromText(text);
+  const vague = isVagueQuery(text);
+  const detailed = hasDetailedEmergencyScenario(text);
+
+  if (hasSpecificDisasterModeSelected()) {
+    return vague;
+  }
+
+  if (S.mode === 'general') {
+    if (namedDisaster && !vague) return false;
+    if (detailed && !vague) return false;
+    if (detailed) return false;
+    if (!namedDisaster && !detailed) return true;
+    return vague;
+  }
+
+  if (namedDisaster && !vague) return false;
+  if (!namedDisaster && detailed && !vague) return false;
+  if (!namedDisaster && !detailed) return true;
+  return vague;
+}
+
+function renderDisasterClarificationResponse() {
+  const placeholder = $('response-placeholder');
+  if (placeholder) placeholder.remove();
+
+  let html;
+  if (hasSpecificDisasterModeSelected()) {
+    html = `<div class="section-head">Need a bit more detail</div>
+<div class="prose-line">Describe what is happening right now: injuries you can see, how many people, who is trapped, and what is around you. A few clear sentences help us give the right steps.</div>`;
+  } else if (S.mode === 'general') {
+    html = `<div class="section-head">Choose disaster type and describe what happened</div>
+<div class="prose-line"><strong>1.</strong> Tap a disaster type above (Earthquake, Hurricane, Chemical, Mass casualty, Wildfire) <em>or</em> name the type of emergency clearly in your message.</div>
+<div class="prose-line"><strong>2.</strong> Describe what happened: who is hurt, who is trapped, what you see, and what is around you.</div>`;
+  } else {
+    html = `<div class="section-head">Select a situation and describe it</div>
+<div class="prose-line"><strong>1.</strong> Tap a situation type at the top (or General), <em>or</em> name the type of emergency in your message.</div>
+<div class="prose-line"><strong>2.</strong> Describe what happened: injuries, number of people, and what you see.</div>`;
+  }
+  responseBody.innerHTML = html;
+  S.currentResponse = responseBody.textContent.replace(/\s+/g, ' ').trim();
+}
+
+function initDetailPrompt() {
+  // Show on load since no mode is selected
+  updateDetailPrompt();
+
+  // Wire up chip buttons — append to input
+  document.querySelectorAll('.detail-chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const current = queryInput.value.trim();
+      const append  = chip.dataset.append;
+      queryInput.value = current ? `${current}, ${append}` : append;
+      queryInput.dispatchEvent(new Event('input')); // resize
+      updateDetailPrompt();
+      queryInput.focus();
+    });
+  });
+
+  // Hide prompt once query gets detailed enough
+  queryInput.addEventListener('input', updateDetailPrompt);
+}
+
+/* ─────────────────────────────────────────────
+   SPEECH RECOGNITION
+───────────────────────────────────────────── */
+function initMic() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) {
+    micBtn.style.display = 'none';
+    micStatus.textContent = 'Voice not available — use Chrome or Edge';
+    return;
+  }
+
+  function buildRec() {
+    const rec = new SR();
+    rec.continuous     = true;
+    rec.interimResults = true;
+    rec.lang           = LANG_VOICE[S.language] || 'en-US';
+    return rec;
+  }
+
+  function attachHandlers(rec) {
+    rec.onstart = () => {
+      S.isRecording = true;
+      micBtn.classList.add('recording');
+      micBtn.innerHTML = MIC_STOP_HTML;
+      micStatus.textContent = 'Listening… speak naturally';
+      micStatus.className = 'recording';
+      transcriptLive.textContent = '';
+    };
+
+    rec.onend = () => {
+      S.isRecording = false;
+      micBtn.classList.remove('recording');
+      micBtn.innerHTML = MIC_IDLE_HTML;
+      micStatus.textContent = 'Tap to speak';
+      micStatus.className = '';
+      clearTimeout(S.silenceTimer);
+    };
+
+    rec.onerror = e => {
+      clearTimeout(S.silenceTimer);
+      if (e.error === 'not-allowed' || e.error === 'permission-denied') {
+        micStatus.textContent = 'Mic blocked — allow in browser';
+        showToast('Microphone access denied. Click the 🔒 icon in your browser address bar to allow it.');
+      } else if (e.error === 'no-speech') {
+        micStatus.textContent = 'No speech heard — try again';
+      } else if (e.error === 'network') {
+        micStatus.textContent = 'Network error — check connection';
+        showToast('Speech recognition needs internet connection.');
+      } else if (e.error !== 'aborted') {
+        showToast('Mic error: ' + e.error);
+      }
+      S.isRecording = false;
+      micBtn.classList.remove('recording');
+      micBtn.innerHTML = MIC_IDLE_HTML;
+      micStatus.className = '';
+    };
+
+    rec.onresult = e => {
+      clearTimeout(S.silenceTimer);
+      let interim = '', final = '';
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        if (e.results[i].isFinal) final += e.results[i][0].transcript;
+        else interim += e.results[i][0].transcript;
+      }
+      if (final) {
+        queryInput.value = (queryInput.value + ' ' + final).trim() + ' ';
+        queryInput.dispatchEvent(new Event('input'));
+        // Auto-detect mode from what was spoken
+        const fullText = queryInput.value;
+        const detected = detectModeFromText(fullText);
+        if (detected && detected !== S.mode) selectMode(detected, true);
+        updateDetailPrompt();
+      }
+      transcriptLive.textContent = interim ? `"${interim}"` : '';
+
+      S.silenceTimer = setTimeout(() => {
+        if (S.isRecording) {
+          rec.stop();
+          const q = queryInput.value.trim();
+          if (q) setTimeout(() => runQuery(q), 300);
+        }
+      }, 2200);
+    };
+    return rec;
+  }
+
+  S.recognition = attachHandlers(buildRec());
+
+  micBtn.addEventListener('click', async () => {
+    if (S.isRecording) {
+      clearTimeout(S.silenceTimer);
+      S.recognition.stop();
+      return;
+    }
+
+    // Request mic permission explicitly first
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      micStatus.textContent = 'Mic blocked — allow in browser';
+      showToast('Microphone access denied. Click the 🔒 icon in your address bar and allow microphone.');
+      return;
+    }
+
+    queryInput.value = '';
+    transcriptLive.textContent = '';
+    updateDetailPrompt();
+
+    // Rebuild recognizer each time to avoid "already started" errors
+    S.recognition = attachHandlers(buildRec());
+    try {
+      S.recognition.start();
+    } catch (err) {
+      micStatus.textContent = 'Could not start mic — try again';
+    }
+  });
+}
+
+/* ─────────────────────────────────────────────
+   TEXT INPUT / SUBMIT
+───────────────────────────────────────────── */
+function initInput() {
+  sendBtn.addEventListener('click', () => {
+    const q = queryInput.value.trim();
+    if (q) runQuery(q);
+  });
+  queryInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      const q = queryInput.value.trim();
+      if (q) runQuery(q);
+    }
+  });
+  // Auto-resize textarea + auto-detect mode
+  queryInput.addEventListener('input', () => {
+    queryInput.style.height = 'auto';
+    queryInput.style.height = Math.min(queryInput.scrollHeight, 120) + 'px';
+    // Auto-detect disaster mode from typed text
+    const q = queryInput.value;
+    if (q.length > 10) {
+      const detected = detectModeFromText(q);
+      if (detected && detected !== S.mode) selectMode(detected, true);
+    }
+    if (!S.history || S.history.length === 0) updateSidebarLatestText();
+  });
+}
+
+/* ─────────────────────────────────────────────
+   QUICK PROTOCOLS
+───────────────────────────────────────────── */
+function initProtocols() {
+  document.querySelectorAll('.proto-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const q = btn.dataset.query;
+      queryInput.value = q;
+      runQuery(q);
+    });
+  });
+}
+
+/* ─────────────────────────────────────────────
+   SPEAK BUTTON
+───────────────────────────────────────────── */
+function initSpeakBtn() {
+  speakBtn.addEventListener('click', () => {
+    if (S.isSpeaking) {
+      stopSpeaking();
+    } else if (S.currentResponse) {
+      speakText(S.currentResponse);
+    }
+  });
+}
+
+/* ─────────────────────────────────────────────
+   NIA API
+───────────────────────────────────────────── */
+async function searchNia(query) {
+  if (!S.niaKey) return null;
+
+  const medQuery = extractMedTerms(query);
+
+  const [pkgRes, webRes] = await Promise.allSettled([
+    niaPackageSearch(medQuery),
+    niaWebSearch(medQuery + ' WHO FEMA ATLS emergency protocol'),
+  ]);
+
+  const results = [];
+  if (pkgRes.status === 'fulfilled' && pkgRes.value) results.push(...pkgRes.value);
+  if (webRes.status === 'fulfilled' && webRes.value) results.push(...webRes.value);
+
+  return results.length > 0 ? results.slice(0, 5) : null;
+}
+
+async function niaPackageSearch(query) {
+  const r = await fetch(`${NIA_BASE}/v1/search`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${S.niaKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query, limit: 3 }),
+    signal: AbortSignal.timeout(8000),
+  });
+  if (!r.ok) throw new Error(`Nia /v1/search ${r.status}`);
+  return parseNiaData(await r.json());
+}
+
+async function niaWebSearch(query) {
+  // Try both common endpoint names
+  for (const endpoint of ['/v1/web-search', '/v1/websearch', '/v1/search/web']) {
+    try {
+      const r = await fetch(`${NIA_BASE}${endpoint}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${S.niaKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ query, limit: 2 }),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (r.ok) return parseNiaData(await r.json());
+    } catch (_) {}
+  }
+  return null;
+}
+
+function parseNiaData(data) {
+  if (!data) return [];
+  const items = data.results || data.documents || data.hits || data.data || [];
+  return items
+    .map(item => ({
+      title:   item.title   || item.source || item.url    || 'Protocol',
+      content: item.content || item.text   || item.snippet || item.body || '',
+      source:  item.source  || item.url    || item.metadata?.source || '',
+    }))
+    .filter(i => i.content);
+}
+
+function extractMedTerms(query) {
+  const stop = new Set(['the','a','an','and','or','but','in','on','at','to','for',
+    'is','are','was','were','have','has','had','do','does','did','will','would',
+    'could','should','may','might','with','from','by','of','this','that','i',
+    'my','we','our','your','his','her','its','they','their','what','how','when',
+    'where','which','who']);
+  return query.toLowerCase().split(/\W+/)
+    .filter(w => w.length > 2 && !stop.has(w))
+    .slice(0, 8)
+    .join(' ') || query;
+}
+
+/* ─────────────────────────────────────────────
+   SCENARIO vs SELECTED MODE — avoid wildfire/earthquake/etc. when
+   the user described assault, crash, or other non-disaster injuries
+───────────────────────────────────────────── */
+function scenarioOverridesDisasterMode(query, mode) {
+  if (!mode || mode === 'general') return false;
+  const q = query;
+  const modeTheme = {
+    wildfire: /wildfire|forest fire|brush fire|bush fire|smoke|burning building|flames|ember|evacuat.*fire|smoke inhalation|carbon monoxide/i,
+    earthquake: /earthquake|quake|aftershock|rubble|collapsed|building fell|structural|debris|tremor|cave-?in/i,
+    hurricane: /hurricane|flood|flooding|storm surge|typhoon|cyclone|submerged|drowning|torrential/i,
+    chemical: /chemical|hazmat|toxic|fumes|spill|gas leak|contamination|poison|biohazard/i,
+    mass: /multiple people|many people|several people|mass casualty|MCI|\d+\s*(people|persons|victims|injured|hurt|casualties)/i,
+  };
+  const rx = modeTheme[mode];
+  if (rx && rx.test(q)) return false;
+
+  const unrelated = /\b(assault|attacked|fight|bottle|stabbed|stab|knife|gun|shot|punched|weapon|mugged|robbery|domestic violence|hit|hitting|struck|beat|beating)\b/i.test(q) ||
+    /\b(hit|struck)\s+(him|her|them|someone|a person|another|me|with)\b/i.test(q) ||
+    /\b(car crash|vehicle crash|collision|motorcycle|drove into)\b/i.test(q) ||
+    /\bbleeding from the (head|face|scalp)|head wound|scalp|bottle.*head|glass.*head\b/i.test(q);
+
+  return unrelated;
+}
+
+function formatGroqErrorForDisplay(message) {
+  if (!message) return message;
+  if (/tokens per day|\bTPD\b|rate.?limit/i.test(message)) {
+    const tryIn = message.match(/try again in ([^.\n]+)/i);
+    const when = tryIn ? ` Retry after ${tryIn[1].trim()}.` : '';
+    return `Daily Groq token limit reached.${when} Use Settings → Groq model → “8B” to reduce usage per request, wait for the daily reset, or upgrade at console.groq.com/settings/billing`;
+  }
+  return message;
+}
+
+/* ─────────────────────────────────────────────
+   GROQ API (STREAMING — OpenAI-compatible)
+───────────────────────────────────────────── */
+async function callGemini(query, niaResults) {
+  if (!S.groqKey) throw new Error('No Groq API key. Add it in Settings ⚙️.');
+
+  let niaContext = '';
+  if (niaResults && niaResults.length > 0) {
+    niaContext = '\n\n--- RETRIEVED PROTOCOLS (from Nia search) ---\n';
+    niaResults.forEach((r, i) => {
+      niaContext += `\n[Source ${i+1}: ${r.title}]\n${r.content.slice(0, 700)}\n`;
+    });
+    niaContext += '\n--- END PROTOCOLS ---\n';
+  }
+
+  const useGeneral = scenarioOverridesDisasterMode(query, S.mode);
+  const modeCtx = useGeneral ? MODE_CTX.general : (MODE_CTX[S.mode] || MODE_CTX.general);
+  const langNote = S.language !== 'en'
+    ? `\n\nIMPORTANT: Respond entirely in ${LANG_NAMES[S.language]}.`
+    : '';
+
+  const priorityNote = useGeneral
+    ? `\n\nNOTE: The situation described does not match the previously selected disaster button — respond ONLY to the assault/injury scenario below, not fire, earthquake, or other disaster hazards unless mentioned.\n`
+    : '';
+
+  const userMsg = `${modeCtx}${niaContext}${priorityNote}\n\nEMERGENCY SCENARIO: ${query}${langNote}`;
+
+  const resp = await fetch(`${GROQ_BASE}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${S.groqKey}`,
+      'Content-Type':  'application/json',
+    },
+    body: JSON.stringify({
+      model:       S.groqModel,
+      stream:      true,
+      max_tokens:  1200,
+      temperature: 0.3,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user',   content: userMsg },
+      ],
+    }),
+  });
+
+  if (!resp.ok) {
+    let errMsg = `Groq API error ${resp.status}`;
+    try {
+      const e = await resp.json();
+      errMsg = e.error?.message || errMsg;
+    } catch(_) {}
+    throw new Error(errMsg);
+  }
+
+  return streamGroqResponse(resp);
+}
+
+async function streamOpenAIChunks(resp, onChunk) {
+  const reader  = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let fullText = '';
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    const lines = buffer.split('\n');
+    buffer = lines.pop();
+    for (const line of lines) {
+      if (!line.startsWith('data: ')) continue;
+      const raw = line.slice(6).trim();
+      if (!raw || raw === '[DONE]') continue;
+      try {
+        const ev = JSON.parse(raw);
+        const chunk = ev.choices?.[0]?.delta?.content;
+        if (chunk) {
+          fullText += chunk;
+          onChunk(fullText);
+        }
+      } catch (_) {}
+    }
+  }
+  return fullText;
+}
+
+async function streamGroqResponse(resp) {
+  const fullText = await streamOpenAIChunks(resp, (ft) => {
+    responseBody.innerHTML = buildHTML(ft) + '<span class="cursor"></span>';
+  });
+  S.currentResponse = fullText;
+  renderFinal(fullText);
+  return fullText;
+}
+
+function buildFollowupContextSnapshot() {
+  const mode = modeButtonLabel(S.mode) || 'not selected';
+  let out = `DISASTER MODE (UI): ${mode}\n`;
+  const hist = (S.history || []).slice(0, 6);
+  if (hist.length === 0) {
+    const cur = (S.currentResponse || '').trim();
+    if (cur) out += `\nLATEST GUIDANCE:\n${cur.slice(0, 4500)}`;
+    return out;
+  }
+  hist.forEach((h, i) => {
+    out += `\n--- Exchange ${i + 1} ---\nWhat they described: ${h.query}\nGuidance given:\n${(h.response || '').slice(0, 3500)}\n`;
+  });
+  return out;
+}
+
+function hasFollowupContext() {
+  if (S.history && S.history.length > 0) return true;
+  const c = (S.currentResponse || '').trim();
+  return c.length >= 80;
+}
+
+function updateFollowupSpeakLastBtn() {
+  if (!followupSpeakLastBtn) return;
+  const lastAsst = [...S.followupMessages].reverse().find(m => m.role === 'assistant' && (m.content || '').trim());
+  followupSpeakLastBtn.disabled = !lastAsst;
+}
+
+function updateFollowupPanelState() {
+  if (!followupPanel || !followupInput || !followupSendBtn) return;
+  const ok = hasFollowupContext() && S.groqKey;
+  if (followupFab) followupFab.classList.toggle('followup-fab--inactive', !ok);
+  followupInput.disabled = !ok;
+  followupSendBtn.disabled = !ok;
+  if (followupMessagesEl && followupMessagesEl.children.length === 0) {
+    followupMessagesEl.innerHTML = ok
+      ? '<div class="followup-empty">Ask clarifying questions about this situation — the assistant remembers your scenario and the protocol above.</div>'
+      : '<div class="followup-empty">Get a protocol response first, then ask follow-ups here.</div>';
+  }
+  updateFollowupSpeakLastBtn();
+}
+
+function openFollowupPopup() {
+  if (!followupOverlay || !followupFab) return;
+  followupOverlay.classList.add('open');
+  followupOverlay.setAttribute('aria-hidden', 'false');
+  followupFab.setAttribute('aria-expanded', 'true');
+  followupPopup?.focus();
+  followupInput?.focus();
+}
+
+function closeFollowupPopup() {
+  if (!followupOverlay || !followupFab) return;
+  followupOverlay.classList.remove('open');
+  followupOverlay.setAttribute('aria-hidden', 'true');
+  followupFab.setAttribute('aria-expanded', 'false');
+}
+
+async function sendFollowupMessage() {
+  if (!followupInput || followupSendBtn.disabled) return;
+  const text = followupInput.value.trim();
+  if (!text) return;
+  if (!S.groqKey) {
+    showToast('Add your Groq API key in Settings');
+    return;
+  }
+  if (!hasFollowupContext()) return;
+
+  followupMessagesEl.querySelector('.followup-empty')?.remove();
+
+  const userDiv = document.createElement('div');
+  userDiv.className = 'followup-msg user';
+  userDiv.textContent = text;
+  followupMessagesEl.appendChild(userDiv);
+
+  const asstDiv = document.createElement('div');
+  asstDiv.className = 'followup-msg assistant';
+  const contentEl = document.createElement('div');
+  contentEl.className = 'followup-msg-content';
+  contentEl.innerHTML = '<span class="cursor"></span>';
+  asstDiv.appendChild(contentEl);
+  followupMessagesEl.appendChild(asstDiv);
+  followupMessagesEl.scrollTop = followupMessagesEl.scrollHeight;
+
+  followupInput.value = '';
+  followupSendBtn.disabled = true;
+
+  const langNote = S.language !== 'en' ? `\n\nRespond in ${LANG_NAMES[S.language]}.` : '';
+  const ctx = buildFollowupContextSnapshot();
+  const recent = S.followupMessages.slice(-20);
+  const apiMessages = [
+    { role: 'system', content: CHAT_FOLLOWUP_SYSTEM + '\n\n--- CONTEXT (what happened so far) ---\n' + ctx + langNote },
+    ...recent.map(m => ({ role: m.role, content: m.content })),
+    { role: 'user', content: text },
+  ];
+
+  try {
+    const resp = await fetch(`${GROQ_BASE}/chat/completions`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${S.groqKey}`,
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify({
+        model:       S.groqModel,
+        stream:      true,
+        max_tokens:  900,
+        temperature: 0.35,
+        messages:    apiMessages,
+      }),
+    });
+    if (!resp.ok) {
+      let errMsg = `Groq API error ${resp.status}`;
+      try {
+        const e = await resp.json();
+        errMsg = e.error?.message || errMsg;
+      } catch (_) {}
+      throw new Error(errMsg);
+    }
+    const fullText = await streamOpenAIChunks(resp, (ft) => {
+      contentEl.innerHTML = buildHTML(ft) + '<span class="cursor"></span>';
+      followupMessagesEl.scrollTop = followupMessagesEl.scrollHeight;
+    });
+    contentEl.innerHTML = buildHTML(fullText);
+    const actions = document.createElement('div');
+    actions.className = 'followup-msg-actions';
+    const speakOne = document.createElement('button');
+    speakOne.type = 'button';
+    speakOne.className = 'followup-msg-speak';
+    speakOne.setAttribute('aria-label', 'Read this reply aloud');
+    speakOne.textContent = '🔊';
+    speakOne.addEventListener('click', () => {
+      if (S.isSpeaking && speakActiveButton === speakOne) {
+        stopSpeaking();
+      } else {
+        speakText(fullText, { button: speakOne, idleText: '🔊', playingText: '⏹' });
+      }
+    });
+    actions.appendChild(speakOne);
+    asstDiv.appendChild(actions);
+    S.followupMessages.push({ role: 'user', content: text });
+    S.followupMessages.push({ role: 'assistant', content: fullText });
+  } catch (err) {
+    asstDiv.className = 'followup-msg assistant error';
+    asstDiv.textContent = formatGroqErrorForDisplay(err.message) || String(err.message);
+  } finally {
+    followupSendBtn.disabled = !hasFollowupContext() || !S.groqKey;
+    followupInput.disabled = followupSendBtn.disabled;
+    updateFollowupSpeakLastBtn();
+  }
+}
+
+function initFollowupChat() {
+  if (!followupSendBtn || !followupInput) return;
+  followupSendBtn.addEventListener('click', () => void sendFollowupMessage());
+  followupInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      void sendFollowupMessage();
+    }
+  });
+  if (followupClearBtn) {
+    followupClearBtn.addEventListener('click', () => {
+      S.followupMessages = [];
+      if (followupMessagesEl) {
+        followupMessagesEl.innerHTML = '<div class="followup-empty">Chat cleared. Ask another follow-up about this scenario.</div>';
+      }
+      updateFollowupSpeakLastBtn();
+    });
+  }
+  if (followupFab && followupOverlay) {
+    followupFab.addEventListener('click', () => {
+      if (!followupOverlay.classList.contains('open')) openFollowupPopup();
+    });
+  }
+  if (followupCloseBtn) {
+    followupCloseBtn.addEventListener('click', () => closeFollowupPopup());
+  }
+  if (followupOverlay) {
+    followupOverlay.addEventListener('click', e => {
+      if (e.target === followupOverlay) closeFollowupPopup();
+    });
+  }
+  if (followupSpeakLastBtn) {
+    followupSpeakLastBtn.addEventListener('click', () => {
+      if (followupSpeakLastBtn.disabled) return;
+      if (S.isSpeaking && speakActiveButton === followupSpeakLastBtn) {
+        stopSpeaking();
+        return;
+      }
+      const lastAsst = [...S.followupMessages].reverse().find(m => m.role === 'assistant');
+      if (lastAsst?.content) {
+        speakText(lastAsst.content, {
+          button: followupSpeakLastBtn,
+          idleText: '🔊 Read last',
+          playingText: '⏹ Stop',
+        });
+      }
+    });
+  }
+  document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    if ($('emergency-overlay')?.classList.contains('open')) {
+      closeEmergencyPanel();
+      return;
+    }
+    if (followupOverlay?.classList.contains('open')) closeFollowupPopup();
+  });
+}
+
+/* ─────────────────────────────────────────────
+   RESPONSE RENDERING
+───────────────────────────────────────────── */
+function renderFinal(text) {
+  responseBody.innerHTML = buildHTML(text);
+}
+
+function buildHTML(raw) {
+  if (!raw.trim()) return '';
+  const lines = raw.split('\n');
+  let html = '';
+  let stepNum = 0;
+
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) continue;
+
+    // Numbered step
+    const stepMatch = t.match(/^(\d+)\.\s+(.+)/);
+    if (stepMatch) {
+      const num  = stepMatch[1];
+      const body = stepMatch[2];
+      const isWarn = body.includes('⚠️') || body.includes('[CRITICAL]');
+      html += `<div class="step-block">
+        <div class="step-num">${num}</div>
+        <div class="step-text${isWarn ? ' warn' : ''}">${formatInline(body)}</div>
+      </div>`;
+      continue;
+    }
+
+    // MONITOR line
+    if (t.startsWith('MONITOR:')) {
+      const mon = t.slice(8).trim();
+      html += `<div class="monitor-block">
+        <div class="monitor-label">Monitor For</div>
+        <div class="monitor-text">${formatInline(mon)}</div>
+      </div>`;
+      continue;
+    }
+
+    // Section header ##
+    if (t.match(/^#{1,3}\s/)) {
+      html += `<div class="section-head">${formatInline(t.replace(/^#+\s*/, ''))}</div>`;
+      continue;
+    }
+
+    // Critical line
+    if (t.startsWith('⚠️') || t.startsWith('[CRITICAL]')) {
+      html += `<div class="step-block">
+        <div class="step-num" style="background:var(--red)">!</div>
+        <div class="step-text warn">${formatInline(t)}</div>
+      </div>`;
+      continue;
+    }
+
+    // Prose
+    html += `<div class="prose-line">${formatInline(t)}</div>`;
+  }
+
+  return html || `<div class="prose-line">${raw}</div>`;
+}
+
+function formatInline(text) {
+  return text
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\*\*([^*]+)\*\*/g, '<span class="inline-strong">$1</span>')
+    .replace(/\[CRITICAL\]/g, '<span class="warn-chip">CRITICAL</span>')
+    .replace(/⚠️/g, '<span style="color:var(--red)">⚠️</span>');
+}
+
+/* ─────────────────────────────────────────────
+   TRIAGE DETECTION & RENDERING
+───────────────────────────────────────────── */
+function hasTriage(query) {
+  return TRIAGE_DETECT.some(rx => rx.test(query));
+}
+
+function renderTriage(query, responseText) {
+  const cards = extractTriageFromResponse(responseText);
+
+  // Fallback: generate from query
+  if (cards.length === 0) {
+    const numMatch = query.match(/(\d+)\s*(patients?|victims?|casualties|people)/i);
+    const count = numMatch ? parseInt(numMatch[1]) : 3;
+    cards.push({ color: 'RED',    priority: 'Priority 1',          reason: 'Immediate — life-threatening, airway/breathing/circulation compromised' });
+    cards.push({ color: 'YELLOW', priority: 'Priority 2',          reason: 'Delayed — serious injuries, stable vitals, can wait 30–60 min' });
+    if (count >= 3)
+      cards.push({ color: 'GREEN', priority: `Priority 3 (×${Math.max(1,count-2)})`, reason: 'Minor — walking wounded, can self-treat or wait' });
+    if (count >= 5)
+      cards.push({ color: 'BLACK', priority: 'Expectant',           reason: 'Unsurvivable injuries or no signs of life — do not divert resources' });
+  }
+
+  triageCards.innerHTML = cards.map(c => `
+    <div class="triage-card ${c.color}">
+      <span class="triage-tag">${c.color === 'RED' ? '🔴 IMMEDIATE' : c.color === 'YELLOW' ? '🟡 DELAYED' : c.color === 'GREEN' ? '🟢 MINOR' : '⚫ EXPECTANT'}</span>
+      <div class="triage-info">
+        <div class="triage-priority">${c.priority}</div>
+        <div class="triage-reason">${c.reason}</div>
+      </div>
+    </div>
+  `).join('');
+
+  triagePanel.classList.add('show');
+}
+
+function extractTriageFromResponse(text) {
+  const cards = [];
+  const colorMap = {
+    'RED|IMMEDIATE': 'RED',
+    'YELLOW|DELAYED': 'YELLOW',
+    'GREEN|MINOR': 'GREEN',
+    'BLACK|EXPECTANT|DECEASED': 'BLACK',
+  };
+
+  text.split('\n').forEach(line => {
+    const up = line.toUpperCase();
+    if (up.includes('IMMEDIATE') || (up.includes('RED') && up.includes('PATIENT')))
+      cards.push({ color: 'RED',    priority: 'Immediate',  reason: line.replace(/^\d+\.\s*/,'').trim().slice(0,120) });
+    else if (up.includes('DELAYED') || (up.includes('YELLOW') && up.includes('PATIENT')))
+      cards.push({ color: 'YELLOW', priority: 'Delayed',    reason: line.replace(/^\d+\.\s*/,'').trim().slice(0,120) });
+    else if (up.includes('MINOR') || (up.includes('GREEN') && up.includes('PATIENT')))
+      cards.push({ color: 'GREEN',  priority: 'Minor',      reason: line.replace(/^\d+\.\s*/,'').trim().slice(0,120) });
+    else if (up.includes('EXPECTANT') || up.includes('BLACK TAG'))
+      cards.push({ color: 'BLACK',  priority: 'Expectant',  reason: line.replace(/^\d+\.\s*/,'').trim().slice(0,120) });
+  });
+
+  // Deduplicate by color
+  const seen = new Set();
+  return cards.filter(c => { if (seen.has(c.color)) return false; seen.add(c.color); return true; });
+}
+
+/* ─────────────────────────────────────────────
+   SOURCES
+───────────────────────────────────────────── */
+function renderSources(sources) {
+  if (!sources || !sources.length) {
+    sourcesStrip.classList.remove('show');
+    return;
+  }
+  sourcesStrip.innerHTML = sources.map(s =>
+    `<span class="source-chip">📄 ${s.title.slice(0, 45)}${s.title.length>45?'…':''}</span>`
+  ).join('');
+  sourcesStrip.classList.add('show');
+}
+
+/* ─────────────────────────────────────────────
+   MAIN QUERY FLOW
+───────────────────────────────────────────── */
+async function runQuery(query) {
+  if (!query.trim()) return;
+
+  if (needsDisasterContextBeforeProtocol(query)) {
+    triagePanel.classList.remove('show');
+    triageCards.innerHTML = '';
+    niaPill.classList.remove('show');
+    sourcesStrip.classList.remove('show');
+    niaOfflineWarn.style.display = 'none';
+    $('detail-prompt').classList.remove('show');
+    renderDisasterClarificationResponse();
+    updateDetailPrompt();
+    return;
+  }
+
+  S.followupMessages = [];
+  if (followupMessagesEl) followupMessagesEl.innerHTML = '';
+  updateFollowupSpeakLastBtn();
+
+  // Lock UI
+  sendBtn.disabled = true;
+  if (S.isRecording) S.recognition?.stop();
+
+  // Reset panels
+  triagePanel.classList.remove('show');
+  triageCards.innerHTML = '';
+  niaPill.classList.remove('show');
+  sourcesStrip.classList.remove('show');
+  niaOfflineWarn.style.display = 'none';
+  $('detail-prompt').classList.remove('show');
+
+  // Show status
+  showStatus('Searching WHO/FEMA/ATLS protocols via Nia…');
+
+  // ── 1. Nia search ──
+  let niaResults = null;
+  try {
+    niaResults = await searchNia(query);
+    if (niaResults && niaResults.length > 0) {
+      niaPill.classList.add('show');
+      renderSources(niaResults);
+    } else if (S.niaKey) {
+      niaOfflineWarn.style.display = 'inline-flex';
+    }
+  } catch (err) {
+    console.warn('[Nia]', err);
+    if (S.niaKey) niaOfflineWarn.style.display = 'inline-flex';
+  }
+
+  // ── 2. Groq stream ──
+  statusMsg.textContent = S.groqModel.includes('8b')
+    ? 'Generating protocol (Groq 8B)…'
+    : 'Generating protocol (Groq 70B)…';
+  try {
+    const response = await callGemini(query, niaResults);
+
+    // Triage if multiple patients
+    if (hasTriage(query)) renderTriage(query, response);
+
+    // History
+    addToHistory(query, response);
+
+    if (followupMessagesEl) {
+      followupMessagesEl.innerHTML = '<div class="followup-empty">Ask clarifying questions about this situation — the assistant remembers your scenario and the protocol above.</div>';
+    }
+    updateFollowupPanelState();
+
+  } catch (err) {
+    console.error('[Groq]', err);
+    const shown = formatGroqErrorForDisplay(err.message);
+    const isKeyErr = /API key|authentication|auth|unauthorized|api_key/i.test(err.message);
+    if (isKeyErr) {
+      responseBody.innerHTML = `<div style="color:var(--red);font-size:17px;padding:8px 0">
+        ⚠️ API Error — check your Groq API key in Settings ⚙️<br>
+        <span style="font-size:13px;color:var(--text-dim);margin-top:4px;display:block">${err.message}</span>
+      </div>`;
+    } else {
+      responseBody.innerHTML = `<div style="color:var(--red);font-size:15px;line-height:1.55;padding:8px 0">
+        ⚠️ ${shown}
+      </div>`;
+    }
+    showToast(shown.slice(0, 120));
+    updateFollowupPanelState();
+  }
+
+  hideStatus();
+  sendBtn.disabled = false;
+  updateDetailPrompt();
+}
+
+/* ─────────────────────────────────────────────
+   STATUS
+───────────────────────────────────────────── */
+function showStatus(msg) {
+  statusMsg.textContent = msg;
+  statusBar.classList.add('show');
+}
+function hideStatus() { statusBar.classList.remove('show'); }
+
+/* ─────────────────────────────────────────────
+   TOAST
+───────────────────────────────────────────── */
+let toastTimer;
+function showToast(msg) {
+  clearTimeout(toastTimer);
+  toast.textContent = '⚠️ ' + msg;
+  toast.classList.add('show');
+  toastTimer = setTimeout(() => toast.classList.remove('show'), 4000);
+}
+
+/* ─────────────────────────────────────────────
+   SPEECH SYNTHESIS
+───────────────────────────────────────────── */
+function resetSpeakButtonUi() {
+  if (speakBtn) {
+    speakBtn.textContent = '🔊 Read aloud';
+    speakBtn.classList.remove('speaking');
+  }
+  if (speakActiveButton && speakActiveButton !== speakBtn) {
+    const idle = speakActiveButton.dataset.speakIdle;
+    if (idle != null) speakActiveButton.textContent = idle;
+    speakActiveButton.classList.remove('speaking');
+  }
+  speakActiveButton = null;
+}
+
+/**
+ * @param {string} text
+ * @param {{ button?: HTMLElement, idleText?: string, playingText?: string }} [opts]
+ */
+function speakText(text, opts) {
+  if (!window.speechSynthesis) return;
+  stopSpeaking();
+
+  const o = opts || {};
+  const btn = o.button || speakBtn;
+  const idleText = o.idleText !== undefined ? o.idleText : (btn === speakBtn ? '🔊 Read aloud' : '🔊');
+  const playingText = o.playingText !== undefined ? o.playingText : (btn === speakBtn ? '⏹ Stop reading' : '⏹');
+  if (btn && btn !== speakBtn) {
+    btn.dataset.speakIdle = idleText;
+  }
+
+  const clean = text
+    .replace(/⚠️/g, 'Warning.')
+    .replace(/\[CRITICAL\]/g, 'Critical:')
+    .replace(/MONITOR:/g, 'Monitor for:')
+    .replace(/#{1,3}\s*/g, '')
+    .replace(/\*\*/g, '')
+    .replace(/\*/g, '');
+
+  const utt = new SpeechSynthesisUtterance(clean);
+  utt.rate = S.voiceSpeed;
+  utt.lang = LANG_VOICE[S.language] || 'en-US';
+
+  speakActiveButton = btn;
+
+  utt.onstart = () => {
+    S.isSpeaking = true;
+    if (btn) {
+      btn.textContent = playingText;
+      btn.classList.add('speaking');
+    }
+  };
+  utt.onend = utt.onerror = () => {
+    S.isSpeaking = false;
+    if (btn) {
+      btn.textContent = idleText;
+      btn.classList.remove('speaking');
+    }
+    speakActiveButton = null;
+  };
+
+  window.speechSynthesis.speak(utt);
+}
+
+function stopSpeaking() {
+  if (window.speechSynthesis) window.speechSynthesis.cancel();
+  S.isSpeaking = false;
+  resetSpeakButtonUi();
+}
+
+/* ─────────────────────────────────────────────
+   HISTORY
+───────────────────────────────────────────── */
+function addToHistory(query, response) {
+  const severity = guessSeverity(query);
+  S.history.unshift({ id: Date.now(), query, response, severity, mode: S.mode, ts: new Date().toISOString() });
+  if (S.history.length > 10) S.history.pop();
+  persist();
+  renderHistory();
+}
+
+function guessSeverity(q) {
+  const ql = q.toLowerCase();
+  if (/cardiac|arrest|unresponsive|no pulse|crush|major burn|severe bleed|unconscious/.test(ql)) return '#FF3B30';
+  if (/spinal|seizure|chemical|smoke|carbon monoxide/.test(ql)) return '#FF9500';
+  if (/fracture|laceration|minor|sprain|stable/.test(ql)) return '#30D158';
+  return '#0A84FF';
+}
+
+function renderHistory() {
+  if (S.history.length === 0) {
+    historyList.innerHTML = '<div class="hist-empty">No queries yet.<br>Speak or type an emergency.</div>';
+    updateSidebarLatestText();
+    return;
+  }
+  historyList.innerHTML = S.history.map(h => `
+    <div class="hist-item" data-id="${h.id}">
+      <div class="hist-query">${escHtml(h.query)}</div>
+      <div class="hist-meta">
+        <div class="hist-dot" style="background:${h.severity}"></div>
+        <span>${h.mode}</span>
+        <span>${new Date(h.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>
+      </div>
+    </div>
+  `).join('');
+
+  historyList.querySelectorAll('.hist-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const item = S.history.find(h => h.id === parseInt(el.dataset.id));
+      if (!item) return;
+      queryInput.value = item.query;
+      S.currentResponse = item.response;
+      renderFinal(item.response);
+      sourcesStrip.classList.remove('show');
+      niaPill.classList.remove('show');
+      triagePanel.classList.remove('show');
+      selectMode(item.mode, false, true);
+      // Scroll to response
+      $('response-panel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
+  });
+  updateSidebarLatestText();
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+/* ─────────────────────────────────────────────
+   SETTINGS
+───────────────────────────────────────────── */
+function initSettings() {
+  // Pre-fill
+  $('gemini-key').value  = S.groqKey;
+  $('nia-key').value     = S.niaKey;
+  $('voice-speed').value = S.voiceSpeed;
+  $('speed-val').textContent = S.voiceSpeed.toFixed(1) + '×';
+  $('lang-select').value = S.language;
+  const groqSel = $('groq-model-select');
+  if (groqSel) groqSel.value = GROQ_MODEL_IDS.has(S.groqModel) ? S.groqModel : GROQ_MODEL_DEFAULT;
+
+  // Highlight active size
+  $('size-seg').querySelectorAll('.seg-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.size === S.textSize);
+  });
+
+  // Open/close
+  $('settings-btn').addEventListener('click', openSettings);
+  $('settings-close').addEventListener('click', closeSettings);
+  $('settings-overlay').addEventListener('click', e => {
+    if (e.target === $('settings-overlay')) closeSettings();
+  });
+
+  // Key inputs
+  $('gemini-key').addEventListener('change', e => {
+    S.groqKey = e.target.value.trim();
+    persist();
+    flashSaved('gemini-saved');
+    updateFollowupPanelState();
+  });
+  $('nia-key').addEventListener('change', e => {
+    S.niaKey = e.target.value.trim();
+    persist();
+    flashSaved('nia-saved');
+  });
+
+  const groqModelEl = $('groq-model-select');
+  if (groqModelEl) {
+    groqModelEl.addEventListener('change', e => {
+      const v = e.target.value;
+      if (GROQ_MODEL_IDS.has(v)) {
+        S.groqModel = v;
+        persist();
+        updateFollowupPanelState();
+      }
+    });
+  }
+
+  // Voice speed
+  $('voice-speed').addEventListener('input', e => {
+    S.voiceSpeed = parseFloat(e.target.value);
+    $('speed-val').textContent = S.voiceSpeed.toFixed(1) + '×';
+    persist();
+  });
+
+  // Text size
+  $('size-seg').querySelectorAll('.seg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      $('size-seg').querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      S.textSize = btn.dataset.size;
+      applyTextSize(S.textSize);
+      persist();
+    });
+  });
+
+  // Language
+  $('lang-select').addEventListener('change', e => {
+    S.language = e.target.value;
+    if (S.recognition) S.recognition.lang = LANG_VOICE[S.language] || 'en-US';
+    persist();
+  });
+}
+
+function openSettings() {
+  $('settings-overlay').classList.add('open');
+  $('settings-panel').classList.add('open');
+}
+
+function closeSettings() {
+  $('settings-overlay').classList.remove('open');
+  $('settings-panel').classList.remove('open');
+}
+
+function flashSaved(elId) {
+  const el = $(elId);
+  el.textContent = '✓ Saved';
+  setTimeout(() => { el.textContent = ''; }, 2000);
+}
+
+function applyTextSize(size) {
+  document.body.classList.remove('size-large', 'size-xlarge');
+  if (size === 'large')  document.body.classList.add('size-large');
+  if (size === 'xlarge') document.body.classList.add('size-xlarge');
+}
+</script>
+</body>
+</html>
