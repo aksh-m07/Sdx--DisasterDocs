@@ -51,6 +51,4 @@ Vanilla HTML/CSS/JS (no build step). External services: Groq (OpenAI-compatible 
 
 DisasterDoc is a **software demo** for education and preparedness. It is **not** a substitute for professional emergency services, medical care, or official incident instructions. **Call your local emergency number** when life or safety is at risk. Do not rely on AI output in place of trained responders.
 
-## License
 
-Add a license file if you distribute this repository (e.g. MIT).
