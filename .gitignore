@@ -1,2 +1,37 @@
+# OS / editor
 .DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Logs
 *.log
+npm-debug.log*
+
+# --- API keys & secrets (never commit these) ---
+.env
+.env.*
+!.env.example
+*.local
+.envrc
+
+# Common secret filenames
+secrets.json
+secrets.yaml
+secrets.yml
+credentials.json
+credentials.yaml
+*.pem
+*.p12
+id_rsa
+id_rsa.pub
+*.key
+api-keys.txt
+.groq-key
+.nia-key
+
+# Local overrides (often used for keys during dev)
+config.local.json
+settings.local.json
+*.secret
