@@ -34,7 +34,7 @@ In-browser emergency guidance: **Nia** retrieves protocol-style excerpts, **Groq
 | **Nia API key** | Optional; enables Nia search before Groq. Without it, answers come from Groq only. |
 | **Language / voice speed / text size** | Stored locally; adjust in Settings. |
 
-Keys are saved in **browser local storage** only—treat them like passwords.
+Keys are saved in **browser local storage** only—treat them like passwords. **Do not** paste keys into tracked source files or commit them. The repo’s **`.gitignore`** ignores common env/secret patterns (`.env*`, `credentials.json`, `*.pem`, etc.); keep using **Settings** in the app for keys.
 
 ## Project layout
 
